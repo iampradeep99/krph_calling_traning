@@ -1,34 +1,51 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');  // Assuming you have the User model
+const User = require('../models/User');
+const ResponseHandler = require('../constant/common');
+const CommonMethods = require("../utils/utilities");
+const responseConst = require('../constant/constantElements');
+const mongoose = require('mongoose');
 
 const login = async (req, res) => {
+  const response = new ResponseHandler(res);
+  const utils = new CommonMethods();
+
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email:email.toLowerCase() });
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+    const userInfo = await User.findOne({ email: email.toLowerCase() });
+
+    if (!userInfo) {
+      return response.Error("User Not Found", []);
     }
-    const isMatch = await bcrypt.compare(password, user.password);
+
+    const isMatch = await bcrypt.compare(password, userInfo.password.trim());
     if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return response.Error("Invalid Credentials", []);
     }
+
     const payload = {
-      userId: user._id,
-      username: user.username,
-      privilegeType: user.privilegeType,
+      userId: userInfo._id,
+      username: userInfo.username,
+      privilegeType: userInfo.privilegeType,
     };
 
-    const token = jwt.sign(payload, process.env.JWTSECRETKEY, { expiresIn: process.env.EXPIRYTIME });
+    const token = await utils.generateToken(payload);
 
-    res.status(200).json({
-      message: 'Login successful',
-      token,
-    });
+    if (token) {
+      await User.findOneAndUpdate(
+        { _id: mongoose.Types.ObjectId(userInfo._id) },
+        { token },
+        { new: true }
+      );
+    }
+
+    const tokenResp = [{ token }];
+    const compressResponse = await utils.GZip(tokenResp);
+    return response.Success(responseConst.LOGINSUCCESS, compressResponse);
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    return response.Error("Server error", []);
   }
 };
 

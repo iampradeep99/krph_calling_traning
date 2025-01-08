@@ -47,8 +47,9 @@ const userSchema = new mongoose.Schema({
   },
   privilegeType: {
     type: Number,
-    required: true,
+    // required: true,
     enum: [0,1,2,3],
+    default:3
     /* 
     0 = Super Admin,
     1 = Admin,
@@ -58,7 +59,7 @@ const userSchema = new mongoose.Schema({
   },
   username: {
     type: String,
-    required: true,
+    // required: true,
     unique: true,
     trim: true,
   },
@@ -74,31 +75,10 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
-}, { timestamps: true });
-
-// Hash the password before saving
-userSchema.pre('save', async function(next) {
-  const user = this;
-
-  // Only hash the password if it is new or modified
-  if (user.isModified('password')) {
-    try {
-      const salt = await bcrypt.genSalt(10);
-      user.password = await bcrypt.hash(user.password, salt);
-      next();
-    } catch (err) {
-      next(err);
-    }
-  } else {
-    next();
+  token:{
+    type:String
   }
-});
-
-// Compare input password with hashed password
-userSchema.methods.comparePassword = async function(candidatePassword) {
-  const user = this;
-  return await bcrypt.compare(candidatePassword, user.password);
-};
+}, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
 

@@ -16,14 +16,13 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
 
-
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/v1/agent', usersRouter);
-app.use('/v1/auth', authRouter);
+app.use('/v1/api/agent', usersRouter);
+app.use('/v1/api/auth', authRouter);
 
 
 connectDB()
