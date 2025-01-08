@@ -70,10 +70,10 @@ const createAgent = async (req, res) => {
 
 
 const updateAgent = async (req, res) => {
-  try {
     const response = new ResponseHandler(res);
-    const { agentId, firstName, lastName, email, mobile, password, designation, country, state, city } = req.body;
     const utils = new CommonMethods(firstName, 8);
+  try {
+    const { agentId, firstName, lastName, email, mobile, password, designation, country, state, city } = req.body;
     let compressResponse;
 
     const agent = await User.findById(agentId);
@@ -131,7 +131,7 @@ const updateAgent = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error, could not update agent' });
+    return response.Error('Server error, could not update agent',[])
   }
 };
 
@@ -140,10 +140,8 @@ const updateAgent = async (req, res) => {
 const agentList = async (req, res) => {
   const response = new ResponseHandler(res);
   const utils = new CommonMethods();
-
   try {
     const { page = 1, limit = 10, searchQuery = '' } = req.body;
-
     let searchCondition = {};
     if (searchQuery) {
       searchCondition = {
@@ -185,8 +183,38 @@ const agentList = async (req, res) => {
     }
 
   } catch (err) {
+    return response.Error(responseElement.INTERNAL_ERROR, err.message);
+  }
+};
+
+const disableAgent = async (req, res) => {
+  const response = new ResponseHandler(res);
+  const utils = new CommonMethods();
+
+  try {
+    const { agentId, status } = req.body;
+
+    const responseData = await User.findOneAndUpdate(
+      { _id: mongoose.Types.ObjectId(agentId) },
+      { $set: { status: status } },
+      { new: true }
+    );
+
+    switch (responseData?.status) {
+      case 1:
+        return response.Success(responseElement.AGENTDISABLE, []);
+      case 0:
+        return response.Success(responseElement.AGENTENABLE, []);
+      case 2:
+        return response.Success(responseElement.AGENTINACTIVE, []);
+      case 4:
+        return response.Success(responseElement.AGENTBLOCKED, []);
+      default:
+        return response.Error("Error in Disable", []);
+    }
+  } catch (err) {
     console.log(err);
-    response.Error(responseElement.INTERNAL_ERROR, err.message);
+    return response.Error("Server Error", []);
   }
 };
 
@@ -195,5 +223,4 @@ const agentList = async (req, res) => {
 
 
 
-
-module.exports = { createAgent,updateAgent,agentList };
+module.exports = { createAgent,updateAgent,agentList,disableAgent };
