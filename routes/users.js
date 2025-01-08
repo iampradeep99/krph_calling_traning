@@ -7,6 +7,8 @@ const authenticate = require('../middlewares/verifyUser')
 
 router.post('/create',agentValidation.validateAgentData,  USER.createAgent)
 router.post('/update',authenticate.verifyToken,agentValidation.validateAgentDataUpdate,  USER.updateAgent)
+router.post('/allAgent',authenticate.verifyToken,  USER.agentList)
+
 
 
 

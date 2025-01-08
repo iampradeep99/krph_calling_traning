@@ -3,6 +3,7 @@ const ResponseHandler = require('../constant/common');
 const CommonMethods = require("../utils/utilities");
 const bcrypt = require('bcryptjs');
 const responseElement = require('../constant/constantElements')
+const mongoose = require('mongoose')
 
 const createAgent = async (req, res) => {
   try {
@@ -37,10 +38,14 @@ const createAgent = async (req, res) => {
       country,
       state,
       city,
-      username: userName,
+      username:firstName.toUpperCase()
+      
     });
 
-    await agent.save();
+   let savedInfo =  await agent.save();
+   if(savedInfo){
+    await User.findOneAndUpdate({_id:mongoose.Types.ObjectId(savedInfo._id)},{$set:{uniqueUserName:`${savedInfo.username}-${savedInfo.userNameDigit}`}},{new:true})
+   }
 
     const agentResponse = {
       firstName: agent.firstName,
@@ -106,7 +111,7 @@ const updateAgent = async (req, res) => {
     agent.state = state || agent.state;
     agent.city = city || agent.city;
 
-    await agent.save();
+   let savedInfo =  await agent.save();
 
     const agentResponse = {
       firstName: agent.firstName,
@@ -132,5 +137,63 @@ const updateAgent = async (req, res) => {
 
 
 
+const agentList = async (req, res) => {
+  const response = new ResponseHandler(res);
+  const utils = new CommonMethods();
 
-module.exports = { createAgent,updateAgent };
+  try {
+    const { page = 1, limit = 10, searchQuery = '' } = req.body;
+
+    let searchCondition = {};
+    if (searchQuery) {
+      searchCondition = {
+        status:0,
+        $or: [
+          { firstName: { $regex: searchQuery, $options: 'i' } },
+          { lastName: { $regex: searchQuery, $options: 'i' } },
+          { uniqueUserName: { $regex: searchQuery, $options: 'i' } },
+        ],
+      };
+    }
+
+    let query = [
+      { $match: searchCondition },
+      { 
+        $sort: { 
+          createdAt: -1, 
+          email: 1,       
+          mobile: 1,      
+          uniqueUserName: 1 
+        }
+      }
+    ];
+
+    const options = {
+      page,
+      limit,
+      customLabels: { totalDocs: 'total', docs: 'agents' },
+    };
+
+    const myAggregate = User.aggregate(query);
+    const getData = await User.aggregatePaginate(myAggregate, options);
+
+    if (getData && getData.agents.length > 0) {
+      const compressResponse = await utils.GZip(getData);
+      response.Success(responseElement.AGENTFETCHED, compressResponse);
+    } else {
+      response.Success(responseElement.NO_AGENTS_FOUND, []);
+    }
+
+  } catch (err) {
+    console.log(err);
+    response.Error(responseElement.INTERNAL_ERROR, err.message);
+  }
+};
+
+
+
+
+
+
+
+module.exports = { createAgent,updateAgent,agentList };

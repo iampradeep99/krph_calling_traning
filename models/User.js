@@ -1,5 +1,10 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const autoIncrement = require('mongoose-auto-increment');
+var aggregatePaginate = require("mongoose-aggregate-paginate-v2");
+
+// Initialize mongoose connection and auto-increment plugin
+autoIncrement.initialize(mongoose.connection);
 
 const userSchema = new mongoose.Schema({
   firstName: {
@@ -47,19 +52,24 @@ const userSchema = new mongoose.Schema({
   },
   privilegeType: {
     type: Number,
-    // required: true,
-    enum: [0,1,2,3],
-    default:3
-    /* 
-    0 = Super Admin,
-    1 = Admin,
-    2 = Agent,
-    3 = Trainer,
-    */
+    enum: [0, 1, 2, 3],
+    default: 3, // Default is Trainer
   },
   username: {
     type: String,
-    // required: true,
+    unique: true,
+    trim: true,
+  },
+  userNameDigit: {
+    type: String, 
+    unique: true,
+    trim: true,
+    get: function(value) {
+      return value.padStart(4, '0');
+    },
+  },
+  uniqueUserName:{
+    type: String,
     unique: true,
     trim: true,
   },
@@ -75,11 +85,32 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
-  token:{
-    type:String
+  token: {
+    type: String,
+  },
+  status:{
+    type:Number,
+    enum: [0, 1, 2, 3],
+    default: 0, 
+    /* 
+    0 = Enable,
+    1 = Disable,
+    2 = Inactive,
+    3 = Blocked,
+    */
+
   }
 }, { timestamps: true });
 
+// Apply the auto-increment plugin to the userNameDigit field
+userSchema.plugin(autoIncrement.plugin, {
+  model: 'User',
+  field: 'userNameDigit',
+  startAt: 1,  // Start from 1
+  incrementBy: 1,  // Increment by 1
+});
+
+userSchema.plugin(aggregatePaginate)
 const User = mongoose.model('User', userSchema);
 
 module.exports = User;
