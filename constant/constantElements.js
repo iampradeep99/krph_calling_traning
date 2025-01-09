@@ -7,7 +7,17 @@ module.exports = {
     AGENTDISABLE:"User Disabled Successfully",
     AGENTENABLE:"User Enabled Successfully",
     AGENTINACTIVE:"User Inactive Successfully",
-    AGENTBLOCKED:"User Blocked Successfully"
+    AGENTBLOCKED:"User Blocked Successfully",
+    TRANINGFETCHED:"Traning Fetching Successfully",
+    TRANINGNOTFOUND:"Traning Not Found",
+
+    // Mode For Country State & City
+
+    CITYMODE:"city",
+    COUNTRYMODE:"country",
+    STATEMODE:"state",
+
+
 
 }
 

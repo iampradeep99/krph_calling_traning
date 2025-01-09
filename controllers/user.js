@@ -3,7 +3,9 @@ const ResponseHandler = require('../constant/common');
 const CommonMethods = require("../utils/utilities");
 const bcrypt = require('bcryptjs');
 const responseElement = require('../constant/constantElements')
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
+const { request } = require('../app');
+const STATE = require('../models/State')
 
 const createAgent = async (req, res) => {
   try {
@@ -82,13 +84,11 @@ const updateAgent = async (req, res) => {
       return response.Success("Agent not found", compressResponse);
     }
 
-    // Email should not be updated. If email is provided, ignore it
     if (email && email !== agent.email) {
       compressResponse = await utils.GZip([]);
       return response.Success("Email cannot be updated", compressResponse);
     }
 
-    // Ensure the mobile number is unique (it can be updated)
     if (mobile && mobile !== agent.mobile) {
       const existingMobile = await User.findOne({ mobile, _id: { $ne: agentId } });
       if (existingMobile) {
@@ -223,4 +223,8 @@ const disableAgent = async (req, res) => {
 
 
 
-module.exports = { createAgent,updateAgent,agentList,disableAgent };
+
+
+
+
+module.exports = { createAgent,updateAgent,agentList,disableAgent};

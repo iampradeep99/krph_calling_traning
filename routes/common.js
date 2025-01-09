@@ -1,0 +1,22 @@
+var express = require('express');
+var router = express.Router();
+const COMMONCONTROLLER = require('../controllers/common')
+const agentValidation = require('../validations/userValidation')
+const authenticate = require('../middlewares/verifyUser')
+
+
+
+router.post('/getCountryStateCity', authenticate.verifyToken,COMMONCONTROLLER.getCountryStateCity )
+router.post('/getLanguage', authenticate.verifyToken,COMMONCONTROLLER.getAllLanguages )
+router.post('/getTraningModes', authenticate.verifyToken,COMMONCONTROLLER.getAllModes )
+router.post('/getTraningModules', authenticate.verifyToken,COMMONCONTROLLER.getTraningModules )
+
+
+
+
+
+
+
+
+
+module.exports = router;
