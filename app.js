@@ -21,6 +21,10 @@ var app = express();
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
+app.get('/', async(req,res)=>{
+  res.render('index', { title: 'Express' });
+})
+
 
 app.use(logger('dev'));
 app.use(express.json());
