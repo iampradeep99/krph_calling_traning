@@ -221,27 +221,139 @@ const disableAgent = async (req, res) => {
 };
 
 
-const getUserById = async(req, res)=>{
+
+const getUserById = async(req, res) => {
   const response = new ResponseHandler(res);
   const utils = new CommonMethods();
   let compressResponse;
-  try{
-    let {userId} = req.body;
+  try {
+    if(!req.body.userId){
+      compressResponse = await utils.GZip([]);
+      return response.Error("Enter the userId", compressResponse);
+    }
 
-    getAgentInfo = await User.find({_id:mongoose.Types.ObjectId(userId)})
-    if(!getAgentInfo.length > 0){
-      compressResponse = await utils.GZip(getAgentInfo);
-          return response.Success("User Fetched Successfully",getAgentInfo)
-        }else{
-          compressResponse = await utils.GZip(getAgentInfo);
-          return response.Success("No Record Found",getAgentInfo)
+    let { userId } = req.body;
 
+    let userInfo = await User.aggregate([
+      {
+        $match: {
+          _id: mongoose.Types.ObjectId(userId)
         }
+      },
+      {
+        $facet: {
+          user: [
+            {
+              $project: {
+                firstName: 1,
+                lastName: 1,
+                email: 1,
+                mobile: 1,
+                designation: 1,
+                status: 1,
+                uniqueUserName: 1
+              }
+            }
+          ],
+          country: [
+            {
+              $lookup: {
+                from: "countries",
+                localField: "country",
+                foreignField: "_id",
+                as: "country"
+              }
+            },
+            {
+              $unwind: {
+                path: "$country",
+                preserveNullAndEmptyArrays: true
+              }
+            },
+            {
+              $project: {
+                _id: "$country._id",
+                name: "$country.name"
+              }
+            }
+          ],
+          state: [
+            {
+              $lookup: {
+                from: "states",
+                localField: "state",
+                foreignField: "_id",
+                as: "state"
+              }
+            },
+            {
+              $unwind: {
+                path: "$state",
+                preserveNullAndEmptyArrays: true
+              }
+            },
+            {
+              $project: {
+                _id: "$state._id",
+                name: "$state.name"
+              }
+            }
+          ],
+          city: [
+            {
+              $lookup: {
+                from: "cities",
+                localField: "city",
+                foreignField: "_id",
+                as: "city"
+              }
+            },
+            {
+              $unwind: {
+                path: "$city",
+                preserveNullAndEmptyArrays: true
+              }
+            },
+            {
+              $project: {
+                _id: "$city._id",
+                name: "$city.name"
+              }
+            }
+          ]
+        }
+      },
+      {
+        $project: {
+          firstName: { $arrayElemAt: ["$user.firstName", 0] },
+          lastName: { $arrayElemAt: ["$user.lastName", 0] },
+          email: { $arrayElemAt: ["$user.email", 0] },
+          mobile: { $arrayElemAt: ["$user.mobile", 0] },
+          designation: { $arrayElemAt: ["$user.designation", 0] },
+          status: { $arrayElemAt: ["$user.status", 0] },
+          uniqueUserName: { $arrayElemAt: ["$user.uniqueUserName", 0] },
+          country: { $arrayElemAt: ["$country", 0] },
+          state: { $arrayElemAt: ["$state", 0] },
+          city: { $arrayElemAt: ["$city", 0] }
+        }
+      }
+    ]);
 
-  }catch(err){
-    return response.Error(responseElement.SERVERERROR, [])
+    if (userInfo.length === 0) {
+      compressResponse = await utils.GZip([]);
+      return response.Success("No Record Found", compressResponse);
+    }
+
+    compressResponse = await utils.GZip(userInfo);
+    return response.Success("User found", compressResponse);
+  } catch (err) {
+    return response.Error(responseElement.SERVERERROR, []);
   }
 }
+
+
+
+
 
 
 
