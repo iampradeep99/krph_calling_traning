@@ -7,10 +7,11 @@ const mongoose = require('mongoose');
 const { request } = require('../app');
 const STATE = require('../models/State')
 
+
 const createAgent = async (req, res) => {
   try {
     const response = new ResponseHandler(res);
-    const { firstName, lastName, email, mobile, password, designation, country, state, city } = req.body;
+    const { firstName, lastName, email, mobile, password, designation, country, state, city, menuPermission } = req.body;
     const utils = new CommonMethods(firstName, 8);
     let compressResponse;
 
@@ -40,14 +41,14 @@ const createAgent = async (req, res) => {
       country,
       state,
       city,
-      username:firstName.toUpperCase()
-      
+      username: firstName.toUpperCase(),
+      menuPermission
     });
 
-   let savedInfo =  await agent.save();
-   if(savedInfo){
-    await User.findOneAndUpdate({_id:mongoose.Types.ObjectId(savedInfo._id)},{$set:{uniqueUserName:`${savedInfo.username}-${savedInfo.userNameDigit}`}},{new:true})
-   }
+    let savedInfo = await agent.save();
+    if (savedInfo) {
+      await User.findOneAndUpdate({ _id: mongoose.Types.ObjectId(savedInfo._id) }, { $set: { uniqueUserName: `${savedInfo.username}-${savedInfo.userNameDigit}` } }, { new: true });
+    }
 
     const agentResponse = {
       firstName: agent.firstName,
@@ -59,6 +60,7 @@ const createAgent = async (req, res) => {
       state: agent.state,
       city: agent.city,
       privilegeType: agent.privilegeType,
+      menuPermission: agent.menuPermission
     };
 
     compressResponse = await utils.GZip(agentResponse);
@@ -172,8 +174,8 @@ const agentList = async (req, res) => {
       customLabels: { totalDocs: 'total', docs: 'agents' },
     };
 
-    const myAggregate = User.aggregate(query);
-    const getData = await User.aggregatePaginate(myAggregate, options);
+      const myAggregate = User.aggregate(query);
+      const getData = await User.aggregatePaginate(myAggregate, options);
 
     if (getData && getData.agents.length > 0) {
       const compressResponse = await utils.GZip(getData);
@@ -219,6 +221,27 @@ const disableAgent = async (req, res) => {
 };
 
 
+const getUserById = async(req, res)=>{
+  const response = new ResponseHandler(res);
+  const utils = new CommonMethods();
+  let compressResponse;
+  try{
+    let {userId} = req.body;
+
+    getAgentInfo = await User.find({_id:mongoose.Types.ObjectId(userId)})
+    if(!getAgentInfo.length > 0){
+      compressResponse = await utils.GZip(getAgentInfo);
+          return response.Success("User Fetched Successfully",getAgentInfo)
+        }else{
+          compressResponse = await utils.GZip(getAgentInfo);
+          return response.Success("No Record Found",getAgentInfo)
+
+        }
+
+  }catch(err){
+    return response.Error(responseElement.SERVERERROR, [])
+  }
+}
 
 
 
@@ -227,4 +250,5 @@ const disableAgent = async (req, res) => {
 
 
 
-module.exports = { createAgent,updateAgent,agentList,disableAgent};
+
+module.exports = { createAgent,updateAgent,agentList,disableAgent, getUserById};

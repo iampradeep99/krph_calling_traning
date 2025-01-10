@@ -13,7 +13,9 @@ const validateAgentData = (req, res, next) => {
     designation: Joi.string().valid('agent', 'admin', 'moderator').required(), 
     country: Joi.string().required(),  
     state: Joi.string().required(),    
-    city: Joi.string().required(),  
+    city: Joi.string().required(), 
+    menuPermission: Joi.array().items(Joi.string().required()).required()
+     
   });
 
   const { error } = schema.validate(req.body);

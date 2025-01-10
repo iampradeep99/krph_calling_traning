@@ -11,6 +11,8 @@ var usersRouter = require('./routes/users');
 const authRouter = require('./routes/auth')
 const commonRouter = require('./routes/common')
 const traningRouter = require('./routes/traning')
+const profileRouter = require('./routes/profile')
+
 
 
 
@@ -29,6 +31,8 @@ app.use('/v1/api/agent', usersRouter);
 app.use('/v1/api/auth', authRouter);
 app.use('/v1/api/common', commonRouter);
 app.use('/v1/api/traning', traningRouter);
+app.use('/v1/api/profile', profileRouter);
+
 
 
 

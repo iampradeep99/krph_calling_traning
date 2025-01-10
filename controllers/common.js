@@ -112,10 +112,157 @@ const getCountryStateCity = async (req, res) => {
   }
 
 
+  const Menu = require('../models/Menu');  
+  const SubMenu = require('../models/Submenu');  
+
+  const addMenu = async (req, res) => {
+    try {
+        const { name, url, order, icon, active } = req.body;
+
+        // Create a new top-level menu
+        const newMenu = new Menu({
+            name,
+            url,
+            order: order || 0,
+            icon: icon || null,
+            active: active !== undefined ? active : true
+        });
+
+        // Save the new menu
+        await newMenu.save();
+
+        return res.status(201).json({
+            message: 'Menu added successfully',
+            data: newMenu
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({
+            message: 'Server error',
+            error: err.message
+        });
+    }
+};
+
+const addSubmenu = async (req, res) => {
+    try {
+        const { menuId } = req.body;  // Get the menuId from the request body
+        const { name, url, order, icon, active } = req.body;
+
+        const parentMenu = await Menu.findById(menuId);
+
+        if (!parentMenu) {
+            return res.status(400).json({ message: 'Parent menu not found' });
+        }
+
+        const newSubMenu = new SubMenu({
+            name,
+            url,
+            parent: menuId,  // Set the parent reference to the parent menu
+            order: order || 0,
+            icon: icon || null,
+            active: active !== undefined ? active : true
+        });
+
+        await newSubMenu.save();
+
+        parentMenu.submenus.push(newSubMenu._id);
+
+        await parentMenu.save();
+
+        return res.status(201).json({
+            message: 'SubMenu added successfully',
+            data: newSubMenu
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({
+            message: 'Server error',
+            error: err.message
+        });
+    }
+};
+
+
+const getMenuWithSubmenus = async (req, res) => {
+    try {
+        const { menuId } = req.body;
+
+        const menuWithSubmenus = await Menu.aggregate([
+            {
+                $match: {
+                    _id: mongoose.Types.ObjectId(menuId)  
+                }
+            },
+            {
+                $lookup: {
+                    from: 'submenus',  
+                    localField: 'submenus',  
+                    foreignField: '_id', 
+                    as: 'submenus'  
+                }
+            }
+        ]);
+
+        if (menuWithSubmenus.length === 0) {
+            return res.status(404).json({ message: 'Menu not found' });
+        }
+
+        return res.status(200).json({
+            message: 'Menu fetched successfully',
+            data: menuWithSubmenus[0]  
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({
+            message: 'Server error',
+            error: err.message
+        });
+    }
+};
+
+
+
+const Profile = require('../models/Profile');  // Assuming the Profile schema is in the 'models' directory
+
+const addProfile = async (req, res) => {
+    try {
+      const { profileName, profileDescription, insertIPAddress, activeStatus, menuPermission } = req.body;
+  
+      const existingProfile = await Profile.findOne({ profileName });
+      if (existingProfile) {
+        return res.status(400).json({ message: 'Profile with this name already exists' });
+      }
+  
+      const newProfile = new Profile({
+        profileName,
+        profileDescription,
+        insertIPAddress,
+        activeStatus,
+        menuPermission,  
+      });
+  
+      const savedProfile = await newProfile.save();
+  
+      return res.status(201).json({
+        message: 'Profile created successfully',
+        profile: savedProfile,
+      });
+  
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: 'Server error, could not create profile' });
+    }
+  };
+
+  
+  
 
 
 
 
 
 
-module.exports = {getCountryStateCity,getAllLanguages,getAllModes,getTraningModules};
+
+
+module.exports = {getCountryStateCity,getAllLanguages,getAllModes,getTraningModules,addMenu,addSubmenu, getMenuWithSubmenus,addProfile};

@@ -57,20 +57,17 @@ const userSchema = new mongoose.Schema({
   },
   username: {
     type: String,
-    unique: true,
     trim: true,
   },
   userNameDigit: {
     type: String, 
     unique: true,
-    trim: true,
     get: function(value) {
       return value.padStart(4, '0');
     },
   },
   uniqueUserName:{
     type: String,
-    unique: true,
     trim: true,
   },
   password: {
@@ -98,8 +95,12 @@ const userSchema = new mongoose.Schema({
     2 = Inactive,
     3 = Blocked,
     */
-
-  }
+  },
+  menuPermission: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Menu',
+    required: true
+}]
 }, { timestamps: true });
 
 // Apply the auto-increment plugin to the userNameDigit field
