@@ -5,6 +5,7 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const {connectDB} = require('./database/mongoDB');
 require('dotenv').config()
+const cors = require('cors')
 
 
 var usersRouter = require('./routes/users');
@@ -25,7 +26,7 @@ app.get('/', async(req,res)=>{
   res.render('index', { title: 'Express' });
 })
 
-
+app.use(cors('*'))
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
