@@ -130,7 +130,6 @@ const updateAgent = async (req, res) => {
     compressResponse = await utils.GZip(agentResponse);
     return response.Success(responseElement.AGENTUPDATE, compressResponse);
 
-
   } catch (err) {
     console.error(err);
     return response.Error('Server error, could not update agent',[])
@@ -147,7 +146,7 @@ const agentList = async (req, res) => {
     let searchCondition = {};
     if (searchQuery) {
       searchCondition = {
-        status:0,
+        status: 0,
         $or: [
           { firstName: { $regex: searchQuery, $options: 'i' } },
           { lastName: { $regex: searchQuery, $options: 'i' } },
@@ -165,6 +164,75 @@ const agentList = async (req, res) => {
           mobile: 1,      
           uniqueUserName: 1 
         }
+      },
+      {
+        $lookup: {
+          from: 'countries',  
+          localField: 'country',  
+          foreignField: '_id',  
+          as: 'country', 
+        }
+      },
+      {
+        $unwind: {
+          path: '$country',
+          preserveNullAndEmptyArrays: true,
+        }
+      },
+      {
+        $lookup: {
+          from: 'states',  
+          localField: 'state',  
+          foreignField: '_id',  
+          as: 'state', 
+        }
+      },
+      {
+        $unwind: {
+          path: '$state',
+          preserveNullAndEmptyArrays: true,
+        }
+      },
+      {
+        $lookup: {
+          from: 'cities',  
+          localField: 'city',  
+          foreignField: '_id',  
+          as: 'city', 
+        }
+      },
+      {
+        $unwind: {
+          path: '$city',
+          preserveNullAndEmptyArrays: true,
+        }
+      },
+      {
+        $project:{
+          firstName:1,
+          lastName:1,
+          email:1,
+          mobile:1,
+          designation:1,
+          country:{
+            name:"$country.name",
+            _id:"$country._id",
+            code:"$country.countryCode"
+          },
+          state:{
+            name:"$state.name",
+            _id:"$state._id",
+            code:"$state.stateCode"
+          },
+          city:{
+            name:"$city.name",
+            _id:"$city._id",
+            code:"$city.cityCode"
+          },
+          uniqueUserName:1,
+          privilegeType:1
+
+        }
       }
     ];
 
@@ -174,8 +242,8 @@ const agentList = async (req, res) => {
       customLabels: { totalDocs: 'total', docs: 'agents' },
     };
 
-      const myAggregate = User.aggregate(query);
-      const getData = await User.aggregatePaginate(myAggregate, options);
+    const myAggregate = User.aggregate(query);
+    const getData = await User.aggregatePaginate(myAggregate, options);
 
     if (getData && getData.agents.length > 0) {
       const compressResponse = await utils.GZip(getData);
@@ -188,6 +256,7 @@ const agentList = async (req, res) => {
     return response.Error(responseElement.INTERNAL_ERROR, err.message);
   }
 };
+
 
 const disableAgent = async (req, res) => {
   const response = new ResponseHandler(res);

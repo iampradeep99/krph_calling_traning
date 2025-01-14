@@ -16,8 +16,6 @@ const profileRouter = require('./routes/profile')
 
 
 
-
-
 var app = express();
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
@@ -35,7 +33,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/v1/api/agent', usersRouter);
 app.use('/v1/api/auth', authRouter);
 app.use('/v1/api/common', commonRouter);
-app.use('/v1/api/traning', traningRouter);
+app.use('/v1/api/training', traningRouter);
 app.use('/v1/api/profile', profileRouter);
 
 

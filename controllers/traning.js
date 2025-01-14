@@ -97,11 +97,12 @@ const create = async (req, res) => {
 };
 
 
-const getAllTraining = async (req, res) => {
+const getAllTrainingInfo = async (req, res) => {
     const response = new ResponseHandler(res);
     const utils = new CommonMethods();
     try {
         const { startDate, endDate, page = 1, limit = 10 } = req.body;
+
         let query = [
             {
                 $match: {
@@ -112,22 +113,29 @@ const getAllTraining = async (req, res) => {
                 }
             },
             {
-                $unwind: "$agents"
-            },
-
-            {
                 $lookup: {
-                    from: "users",  
-                    localField: "agents.agentId",  
-                    foreignField: "_id",  
-                    as: "users"  // 
+                    from: "languages",           
+                    localField: "trainingLanguage", 
+                    foreignField: "_id",           
+                    as: "trainingLanguage"      
                 }
             },
-            
+            {
+                $project: {
+                    trainingScheduledDate: 1,  // Include this field
+                    trainingLanguage: {        // Include only specific fields from the trainingLanguage
+                        $arrayElemAt: ["$trainingLanguage", 0]  // Extract first item from array returned by lookup
+                    }
+                }
+            },
+            {
+                $project: {
+                    trainingScheduledDate: 1,  // Include this field
+                    "trainingLanguage._id": 1, // Include only _id of the trainingLanguage
+                    "trainingLanguage.name": 1 // Include other fields you want from the trainingLanguage, e.g., "name"
+                }
+            }
         ];
-        
-        
-        
 
         const options = {
             page,
@@ -136,9 +144,7 @@ const getAllTraining = async (req, res) => {
         };
 
         const myAggregate = await TRANING.aggregate(query);
-
         const getData = await TRANING.aggregatePaginate(myAggregate, options);
-       
 
         if (getData && getData.agents.length > 0) {
             // const compressResponse = await utils.GZip(getData);
@@ -153,5 +159,117 @@ const getAllTraining = async (req, res) => {
     }
 };
 
+const moment = require('moment'); 
 
-module.exports = { create,getAllTraining };
+const allTraning = async (req, res) => {
+    const response = new ResponseHandler(res);
+    const utils = new CommonMethods();
+    try {
+        const { startDate, endDate, page = 1, limit = 10 } = req.body;
+        let matchCondition = {};
+
+        if (startDate && endDate) {
+            matchCondition.trainingScheduledDate = {
+                $gte: moment(startDate).startOf('day').toDate(),
+                $lte: moment(endDate).endOf('day').toDate()
+            };
+        } else if (startDate) {
+            matchCondition.trainingScheduledDate = { 
+                $gte: moment(startDate).startOf('day').toDate() 
+            };
+        } else if (endDate) {
+            matchCondition.trainingScheduledDate = { 
+                $lte: moment(endDate).endOf('day').toDate() 
+            };
+        }
+        let query = [
+            {
+                $match: matchCondition
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "agents.agentId",
+                    foreignField: "_id",
+                    as: "agents"
+                }
+            },
+            {
+                $lookup: {
+                    from: "languages",
+                    localField: "trainingLanguage",
+                    foreignField: "_id",
+                    as: "trainingLanguage"
+                }
+            },
+            {
+                $unwind: {
+                    path: "$trainingLanguage",
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $lookup: {
+                    from: "traningmodes",
+                    localField: "trainingMode",
+                    foreignField: "_id",
+                    as: "trainingMode"
+                }
+            },
+            {
+                $unwind: {
+                    path: "$trainingMode",
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $lookup: {
+                    from: "traningmodules",
+                    localField: "trainingModule",
+                    foreignField: "_id",
+                    as: "trainingModule"
+                }
+            },
+            {
+                $unwind: {
+                    path: "$trainingModule",
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $project: {
+                    agents: 1,
+                    trainingLanguage: {
+                        languageName: "$trainingLanguage.languageName"
+                    },
+                    trainingScheduledDate: 1,
+                    trainingStartTime: 1,
+                    trainingEndTime: 1,
+                    trainingMode: {
+                        traningModeName: "$trainingMode.traningModeName"
+                    },
+                    trainingLink: 1
+                }
+            }
+        ];
+
+        const data = await TRANING.aggregate(query);
+        if(data.length > 0){
+            const compressResponse = await utils.GZip(data);
+            response.Success(responseElement.TRANINGFETCHED, compressResponse);
+        }else{
+            response.Success(responseElement.TRANINGNOTFOUND, []);
+        }
+
+        // res.status(200).json(data);
+
+    } catch (err) {
+   console.log(err)
+        return response.Error(responseElement.SERVERERROR, []);
+
+    }
+};
+
+
+
+module.exports = { create,allTraning };
