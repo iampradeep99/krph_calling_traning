@@ -5,6 +5,7 @@ const ResponseHandler = require('../constant/common');
 const CommonMethods = require("../utils/utilities");
 const responseConst = require('../constant/constantElements');
 const mongoose = require('mongoose');
+const moment = require('moment');
 
 const login = async (req, res) => {
   const response = new ResponseHandler(res);
@@ -23,12 +24,12 @@ const login = async (req, res) => {
       return response.Error("Invalid Credentials", []);
     }
 
-     const payload = {
+    const payload = {
       userId: userInfo._id,
       username: userInfo.username,
       privilegeType: userInfo.privilegeType,
-      loginTime: Date.now(), 
-      expiryTime: Date.now() + 12 * 60 * 60 * 1000  
+      loginTime: moment().format('DD/MM/YYYY HH:mm:ss'),  // Current time formatted
+      expiryTime: moment().add(12, 'hours').format('DD/MM/YYYY HH:mm:ss')  // 12 hours added and formatted
     };
     
 
