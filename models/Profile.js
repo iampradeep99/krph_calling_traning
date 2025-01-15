@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-
+const aggregatePaginate = require('mongoose-aggregate-paginate-v2'); // Assuming you are using this plugin
 const profileSchema = new mongoose.Schema({
   profileName: {
     type: String,
@@ -33,7 +33,7 @@ const profileSchema = new mongoose.Schema({
     required: true,
   }],
 });
-
+profileSchema.plugin(aggregatePaginate);
 const Profile = mongoose.model('Profile', profileSchema);
 
 module.exports = Profile;

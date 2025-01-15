@@ -5,7 +5,8 @@ const bcrypt = require('bcryptjs');
 const responseElement = require('../constant/constantElements')
 const mongoose = require('mongoose');
 const { request } = require('../app');
-const STATE = require('../models/State')
+const STATE = require('../models/State');
+const { assignProfile } = require('./profile');
 
 
 const createAgent = async (req, res) => {
@@ -291,12 +292,180 @@ const disableAgent = async (req, res) => {
 
 
 
-const getUserById = async(req, res) => {
+// const getUserById = async(req, res) => {
+//   const response = new ResponseHandler(res);
+//   const utils = new CommonMethods();
+//   let compressResponse;
+//   try {
+//     if(!req.body.userId){
+//       compressResponse = await utils.GZip([]);
+//       return response.Error("Enter the userId", compressResponse);
+//     }
+
+//     let { userId } = req.body;
+
+//     let userInfo = await User.aggregate([
+//       {
+//         $match: {
+//           _id: mongoose.Types.ObjectId(userId)
+//         }
+//       },
+//       {
+//         $facet: {
+//           user: [
+//             {
+//               $project: {
+//                 firstName: 1,
+//                 lastName: 1,
+//                 email: 1,
+//                 mobile: 1,
+//                 designation: 1,
+//                 status: 1,
+//                 uniqueUserName: 1,
+//                 assignedProfile:1
+//               }
+//             }
+//           ],
+//           country: [
+//             {
+//               $lookup: {
+//                 from: "countries",
+//                 localField: "country",
+//                 foreignField: "_id",
+//                 as: "country"
+//               }
+//             },
+//             {
+//               $unwind: {
+//                 path: "$country",
+//                 preserveNullAndEmptyArrays: true
+//               }
+//             },
+//             {
+//               $project: {
+//                 _id: "$country._id",
+//                 name: "$country.name"
+//               }
+//             }
+//           ],
+//           state: [
+//             {
+//               $lookup: {
+//                 from: "states",
+//                 localField: "state",
+//                 foreignField: "_id",
+//                 as: "state"
+//               }
+//             },
+//             {
+//               $unwind: {
+//                 path: "$state",
+//                 preserveNullAndEmptyArrays: true
+//               }
+//             },
+//             {
+//               $project: {
+//                 _id: "$state._id",
+//                 name: "$state.name"
+//               }
+//             }
+//           ],
+//           city: [
+//             {
+//               $lookup: {
+//                 from: "cities",
+//                 localField: "city",
+//                 foreignField: "_id",
+//                 as: "city"
+//               }
+//             },
+//             {
+//               $unwind: {
+//                 path: "$city",
+//                 preserveNullAndEmptyArrays: true
+//               }
+//             },
+//             {
+//               $project: {
+//                 _id: "$city._id",
+//                 name: "$city.name"
+//               }
+//             }
+//           ]
+//         }
+//       },
+//       {
+//         $project: {
+//           firstName: { $arrayElemAt: ["$user.firstName", 0] },
+//           lastName: { $arrayElemAt: ["$user.lastName", 0] },
+//           email: { $arrayElemAt: ["$user.email", 0] },
+//           mobile: { $arrayElemAt: ["$user.mobile", 0] },
+//           designation: { $arrayElemAt: ["$user.designation", 0] },
+//           status: { $arrayElemAt: ["$user.status", 0] },
+//           uniqueUserName: { $arrayElemAt: ["$user.uniqueUserName", 0] },
+//           country: { $arrayElemAt: ["$country", 0] },
+//           state: { $arrayElemAt: ["$state", 0] },
+//           city: { $arrayElemAt: ["$city", 0] },
+//           assignedProfile: { $arrayElemAt: ["$user.assignedProfile",0]}
+//         }
+//       },
+//       {
+//         $lookup:{
+//           from: "profiles",
+//           localField: "assignedProfile",
+//           foreignField: "_id",
+//           as: "assignedProfile"
+//         }
+//       },
+//       {
+//         $unwind: {
+//           path: "$assignedProfile",
+//           preserveNullAndEmptyArrays: true
+//         }
+//       },
+//       {
+//         $lookup: {
+//           from: "menus",
+//           localField: "assignedProfile.menuPermission",
+//           foreignField: "_id", 
+//           as: "assignedProfile.menuPermission", 
+//         },
+//       },
+//       {
+//         $unwind: {
+//           path: "$assignedProfile.menuPermission",
+//           preserveNullAndEmptyArrays: true,
+//         },
+//       },
+//       {
+//         $lookup: {
+//           from: "submenus", // Perform the lookup on submenus collection
+//           localField: "assignedProfile.menuPermission.submenus", // Use the submenus array in menuPermission
+//           foreignField: "_id", // Match with the submenu _id in the submenus collection
+//           as: "assignedProfile.menuPermission.submenus", // Add the submenu details as submenusDetails
+//         },
+//       },
+      
+//     ]);
+
+//     if (userInfo.length === 0) {
+//       compressResponse = await utils.GZip([]);
+//       return response.Success("No Record Found", compressResponse);
+//     }
+
+//     compressResponse = await utils.GZip(userInfo);
+//     return response.Success("User found", userInfo);
+//   } catch (err) {
+//     return response.Error(responseElement.SERVERERROR, []);
+//   }
+// }
+
+const getUserById = async (req, res) => {
   const response = new ResponseHandler(res);
   const utils = new CommonMethods();
   let compressResponse;
   try {
-    if(!req.body.userId){
+    if (!req.body.userId) {
       compressResponse = await utils.GZip([]);
       return response.Error("Enter the userId", compressResponse);
     }
@@ -306,8 +475,8 @@ const getUserById = async(req, res) => {
     let userInfo = await User.aggregate([
       {
         $match: {
-          _id: mongoose.Types.ObjectId(userId)
-        }
+          _id: mongoose.Types.ObjectId(userId),
+        },
       },
       {
         $facet: {
@@ -320,9 +489,10 @@ const getUserById = async(req, res) => {
                 mobile: 1,
                 designation: 1,
                 status: 1,
-                uniqueUserName: 1
-              }
-            }
+                uniqueUserName: 1,
+                assignedProfile: 1,
+              },
+            },
           ],
           country: [
             {
@@ -330,21 +500,21 @@ const getUserById = async(req, res) => {
                 from: "countries",
                 localField: "country",
                 foreignField: "_id",
-                as: "country"
-              }
+                as: "country",
+              },
             },
             {
               $unwind: {
                 path: "$country",
-                preserveNullAndEmptyArrays: true
-              }
+                preserveNullAndEmptyArrays: true,
+              },
             },
             {
               $project: {
                 _id: "$country._id",
-                name: "$country.name"
-              }
-            }
+                name: "$country.name",
+              },
+            },
           ],
           state: [
             {
@@ -352,21 +522,21 @@ const getUserById = async(req, res) => {
                 from: "states",
                 localField: "state",
                 foreignField: "_id",
-                as: "state"
-              }
+                as: "state",
+              },
             },
             {
               $unwind: {
                 path: "$state",
-                preserveNullAndEmptyArrays: true
-              }
+                preserveNullAndEmptyArrays: true,
+              },
             },
             {
               $project: {
                 _id: "$state._id",
-                name: "$state.name"
-              }
-            }
+                name: "$state.name",
+              },
+            },
           ],
           city: [
             {
@@ -374,23 +544,23 @@ const getUserById = async(req, res) => {
                 from: "cities",
                 localField: "city",
                 foreignField: "_id",
-                as: "city"
-              }
+                as: "city",
+              },
             },
             {
               $unwind: {
                 path: "$city",
-                preserveNullAndEmptyArrays: true
-              }
+                preserveNullAndEmptyArrays: true,
+              },
             },
             {
               $project: {
                 _id: "$city._id",
-                name: "$city.name"
-              }
-            }
-          ]
-        }
+                name: "$city.name",
+              },
+            },
+          ],
+        },
       },
       {
         $project: {
@@ -403,9 +573,49 @@ const getUserById = async(req, res) => {
           uniqueUserName: { $arrayElemAt: ["$user.uniqueUserName", 0] },
           country: { $arrayElemAt: ["$country", 0] },
           state: { $arrayElemAt: ["$state", 0] },
-          city: { $arrayElemAt: ["$city", 0] }
-        }
+          city: { $arrayElemAt: ["$city", 0] },
+          assignedProfile: { $arrayElemAt: ["$user.assignedProfile", 0] },
+        },
+      },
+      {
+        $lookup: {
+          from: "profiles",
+          localField: "assignedProfile",
+          foreignField: "_id",
+          as: "assignedProfile",
+        },
+      },
+      {
+        $unwind: {
+          path: "$assignedProfile",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "menus",
+          localField: "assignedProfile.menuPermission", 
+          foreignField: "_id", 
+          as: "assignedProfile.menuPermission",
+        },
+      },
+     {
+      $project:{
+        firstName: 1,
+        lastName:1,
+        email:1,
+        mobile: 1,
+        designation:1,
+        status:1,
+        uniqueUserName:1,
+        country:1,
+        state: 1,
+        city: 1,
+        assignedProfile: 1,
       }
+     }
+       
+     
     ]);
 
     if (userInfo.length === 0) {
@@ -418,7 +628,8 @@ const getUserById = async(req, res) => {
   } catch (err) {
     return response.Error(responseElement.SERVERERROR, []);
   }
-}
+};
+
 
 
 

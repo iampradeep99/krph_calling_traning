@@ -100,7 +100,11 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Menu',
     required: true
-}]
+}],
+assignedProfile:{
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Profile',
+}
 }, { timestamps: true });
 
 // Apply the auto-increment plugin to the userNameDigit field
