@@ -23,11 +23,14 @@ const login = async (req, res) => {
       return response.Error("Invalid Credentials", []);
     }
 
-    const payload = {
+     const payload = {
       userId: userInfo._id,
       username: userInfo.username,
       privilegeType: userInfo.privilegeType,
+      loginTime: Date.now(), 
+      expiryTime: Date.now() + 12 * 60 * 60 * 1000  
     };
+    
 
     const token = await utils.generateToken(payload);
 
