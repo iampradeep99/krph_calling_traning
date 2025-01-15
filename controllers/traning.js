@@ -182,6 +182,8 @@ const allTraning = async (req, res) => {
                 $lte: moment(endDate).endOf('day').toDate() 
             };
         }
+
+        // Query to fetch the data with pagination
         let query = [
             {
                 $match: matchCondition
@@ -250,23 +252,70 @@ const allTraning = async (req, res) => {
                     },
                     trainingLink: 1
                 }
+            },
+            {
+                $skip: (page - 1) * limit // Pagination: Skip items based on the page number
+            },
+            {
+                $limit: limit // Pagination: Limit the number of items per page
             }
         ];
 
+        // Fetch the total count of documents that match the query (without pagination)
+        const totalCountQuery = [
+            { $match: matchCondition },
+            { $count: "total" }
+        ];
+
+        const totalCountResult = await TRANING.aggregate(totalCountQuery);
+        const totalItems = totalCountResult.length > 0 ? totalCountResult[0].total : 0;
+        const totalPages = Math.ceil(totalItems / limit);
+        const pagingCounter = (page - 1) * limit + 1;
+        const hasPrevPage = page > 1;
+        const hasNextPage = page < totalPages;
+        const prevPage = hasPrevPage ? page - 1 : null;
+        const nextPage = hasNextPage ? page + 1 : null;
+
+        // Fetch the paginated data
         const data = await TRANING.aggregate(query);
-        if(data.length > 0){
-            const compressResponse = await utils.GZip(data);
+        if (data.length > 0) {
+           let modifiedResp =  {
+                data: data,
+                total: totalItems,
+                limit: limit,
+                page: page,
+                totalPages: totalPages,
+                pagingCounter: pagingCounter,
+                hasPrevPage: hasPrevPage,
+                hasNextPage: hasNextPage,
+                prevPage: prevPage,
+                nextPage: nextPage
+            }
+            const compressResponse = await utils.GZip([modifiedResp]);
+
             response.Success(responseElement.TRANINGFETCHED, compressResponse);
-        }else{
-            response.Success(responseElement.TRANINGNOTFOUND, []);
+        } else {
+           
+            let modifiedResp = {
+                agents: [],
+                total: 0,
+                limit: limit,
+                page: page,
+                totalPages: 0,
+                pagingCounter: 0,
+                hasPrevPage: false,
+                hasNextPage: false,
+                prevPage: null,
+                nextPage: null
+            }
+            const compressResponse = await utils.GZip([modifiedResp]);
+
+            response.Success(responseElement.TRANINGNOTFOUND,compressResponse );
         }
 
-        // res.status(200).json(data);
-
     } catch (err) {
-   console.log(err)
+        console.log(err);
         return response.Error(responseElement.SERVERERROR, []);
-
     }
 };
 
