@@ -164,9 +164,9 @@ const addSubmenu = async (req, res) => {
             active: active !== undefined ? active : true
         });
 
-        await newSubMenu.save();
+        // await newSubMenu.save();
 
-        parentMenu.submenus.push(newSubMenu._id);
+        parentMenu.submenus.push(newSubMenu);
 
         await parentMenu.save();
 
