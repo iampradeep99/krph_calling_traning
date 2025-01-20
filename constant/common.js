@@ -16,7 +16,7 @@ class ResponseHandler {
       this.res.status(200).json(response);
     }
   
-    Error(message, errorDetails = null, statusCode = 400) {
+    Error(message, errorDetails = null, statusCode = 200) {
       const response = {
         responseObject: null,
         responseDynamic: null,
