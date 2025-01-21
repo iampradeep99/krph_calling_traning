@@ -6,7 +6,7 @@ const authenticate = require('../middlewares/verifyUser')
 
 
 router.post('/create', authenticate.verifyToken,traningValidation.validateTraningData, TRAININGCONTROLLER.create)
-router.post('/listTrainings', authenticate.verifyToken, TRAININGCONTROLLER.getAllTraining)
+router.post('/listTrainings', authenticate.verifyToken, TRAININGCONTROLLER.allTraning)
 
 
 

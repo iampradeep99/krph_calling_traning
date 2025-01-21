@@ -6,7 +6,9 @@ const authenticate = require('../middlewares/verifyUser')
 
 
 
-// router.post('/getCountryStateCity', authenticate.verifyToken,PROFILECONTROLLER. )
+router.post('/assign', authenticate.verifyToken,PROFILECONTROLLER.assignProfile )
+router.post('/assignPermission', authenticate.verifyToken,PROFILECONTROLLER.assignPermissionToProfile )
+
 
 
 

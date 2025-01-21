@@ -6,9 +6,9 @@ const verifyToken = async (req, res, next) => {
   const response = new ResponseHandler(res);
   const utils = new CommonMethods();
   const token = req.header('Authorization')?.replace('Bearer ', '');
-  
+
   if (!token) {
-    return response.Error('No token, authorization denied', []);
+    return response.Error('No token, authorization denied', [], 401);  
   }
 
   try {
@@ -16,12 +16,12 @@ const verifyToken = async (req, res, next) => {
     req.user = decoded;
     next();
   } catch (err) {
-    console.error(err);
-    
+    console.error('JWT Verification Error:', err);
+
     if (err.name === 'TokenExpiredError') {
-      return response.Error('Token has expired', []);
+      return response.Error('Token has expired', [], 401);  
     } else {
-      return response.Error('Invalid token', []);
+      return response.Error('Invalid token', [], 401);  
     }
   }
 };

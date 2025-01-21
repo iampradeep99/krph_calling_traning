@@ -5,6 +5,7 @@ const ResponseHandler = require('../constant/common');
 const CommonMethods = require("../utils/utilities");
 const responseConst = require('../constant/constantElements');
 const mongoose = require('mongoose');
+const moment = require('moment');
 
 const login = async (req, res) => {
   const response = new ResponseHandler(res);
@@ -27,7 +28,10 @@ const login = async (req, res) => {
       userId: userInfo._id,
       username: userInfo.username,
       privilegeType: userInfo.privilegeType,
+      loginTime: moment().format('DD/MM/YYYY HH:mm:ss'),  // Current time formatted
+      expiryTime: moment().add(12, 'hours').format('DD/MM/YYYY HH:mm:ss')  // 12 hours added and formatted
     };
+    
 
     const token = await utils.generateToken(payload);
 

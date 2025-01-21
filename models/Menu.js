@@ -10,10 +10,7 @@ const menuSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    submenus: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'SubMenu'  // Reference to SubMenu model
-    }],
+    submenus: [],
     order: {
         type: Number,
         default: 0

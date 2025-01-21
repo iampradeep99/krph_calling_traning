@@ -97,11 +97,12 @@ const create = async (req, res) => {
 };
 
 
-const getAllTraining = async (req, res) => {
+const getAllTrainingInfo = async (req, res) => {
     const response = new ResponseHandler(res);
     const utils = new CommonMethods();
     try {
         const { startDate, endDate, page = 1, limit = 10 } = req.body;
+
         let query = [
             {
                 $match: {
@@ -112,22 +113,29 @@ const getAllTraining = async (req, res) => {
                 }
             },
             {
-                $unwind: "$agents"
-            },
-
-            {
                 $lookup: {
-                    from: "users",  
-                    localField: "agents.agentId",  
-                    foreignField: "_id",  
-                    as: "users"  // 
+                    from: "languages",           
+                    localField: "trainingLanguage", 
+                    foreignField: "_id",           
+                    as: "trainingLanguage"      
                 }
             },
-            
+            {
+                $project: {
+                    trainingScheduledDate: 1,  // Include this field
+                    trainingLanguage: {        // Include only specific fields from the trainingLanguage
+                        $arrayElemAt: ["$trainingLanguage", 0]  // Extract first item from array returned by lookup
+                    }
+                }
+            },
+            {
+                $project: {
+                    trainingScheduledDate: 1,  // Include this field
+                    "trainingLanguage._id": 1, // Include only _id of the trainingLanguage
+                    "trainingLanguage.name": 1 // Include other fields you want from the trainingLanguage, e.g., "name"
+                }
+            }
         ];
-        
-        
-        
 
         const options = {
             page,
@@ -136,9 +144,7 @@ const getAllTraining = async (req, res) => {
         };
 
         const myAggregate = await TRANING.aggregate(query);
-
         const getData = await TRANING.aggregatePaginate(myAggregate, options);
-       
 
         if (getData && getData.agents.length > 0) {
             // const compressResponse = await utils.GZip(getData);
@@ -153,5 +159,166 @@ const getAllTraining = async (req, res) => {
     }
 };
 
+const moment = require('moment'); 
 
-module.exports = { create,getAllTraining };
+const allTraning = async (req, res) => {
+    const response = new ResponseHandler(res);
+    const utils = new CommonMethods();
+    try {
+        const { startDate, endDate, page = 1, limit = 10 } = req.body;
+        let matchCondition = {};
+
+        if (startDate && endDate) {
+            matchCondition.trainingScheduledDate = {
+                $gte: moment(startDate).startOf('day').toDate(),
+                $lte: moment(endDate).endOf('day').toDate()
+            };
+        } else if (startDate) {
+            matchCondition.trainingScheduledDate = { 
+                $gte: moment(startDate).startOf('day').toDate() 
+            };
+        } else if (endDate) {
+            matchCondition.trainingScheduledDate = { 
+                $lte: moment(endDate).endOf('day').toDate() 
+            };
+        }
+
+        // Query to fetch the data with pagination
+        let query = [
+            {
+                $match: matchCondition
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "agents.agentId",
+                    foreignField: "_id",
+                    as: "agents"
+                }
+            },
+            {
+                $lookup: {
+                    from: "languages",
+                    localField: "trainingLanguage",
+                    foreignField: "_id",
+                    as: "trainingLanguage"
+                }
+            },
+            {
+                $unwind: {
+                    path: "$trainingLanguage",
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $lookup: {
+                    from: "traningmodes",
+                    localField: "trainingMode",
+                    foreignField: "_id",
+                    as: "trainingMode"
+                }
+            },
+            {
+                $unwind: {
+                    path: "$trainingMode",
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $lookup: {
+                    from: "traningmodules",
+                    localField: "trainingModule",
+                    foreignField: "_id",
+                    as: "trainingModule"
+                }
+            },
+            {
+                $unwind: {
+                    path: "$trainingModule",
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $project: {
+                    agents: 1,
+                    trainingLanguage: {
+                        languageName: "$trainingLanguage.languageName"
+                    },
+                    trainingScheduledDate: 1,
+                    trainingStartTime: 1,
+                    trainingEndTime: 1,
+                    trainingMode: {
+                        traningModeName: "$trainingMode.traningModeName"
+                    },
+                    trainingLink: 1
+                }
+            },
+            {
+                $skip: (page - 1) * limit // Pagination: Skip items based on the page number
+            },
+            {
+                $limit: limit // Pagination: Limit the number of items per page
+            }
+        ];
+
+        // Fetch the total count of documents that match the query (without pagination)
+        const totalCountQuery = [
+            { $match: matchCondition },
+            { $count: "total" }
+        ];
+
+        const totalCountResult = await TRANING.aggregate(totalCountQuery);
+        const totalItems = totalCountResult.length > 0 ? totalCountResult[0].total : 0;
+        const totalPages = Math.ceil(totalItems / limit);
+        const pagingCounter = (page - 1) * limit + 1;
+        const hasPrevPage = page > 1;
+        const hasNextPage = page < totalPages;
+        const prevPage = hasPrevPage ? page - 1 : null;
+        const nextPage = hasNextPage ? page + 1 : null;
+
+        // Fetch the paginated data
+        const data = await TRANING.aggregate(query);
+        if (data.length > 0) {
+           let modifiedResp =  {
+                data: data,
+                total: totalItems,
+                limit: limit,
+                page: page,
+                totalPages: totalPages,
+                pagingCounter: pagingCounter,
+                hasPrevPage: hasPrevPage,
+                hasNextPage: hasNextPage,
+                prevPage: prevPage,
+                nextPage: nextPage
+            }
+            const compressResponse = await utils.GZip([modifiedResp]);
+
+            response.Success(responseElement.TRANINGFETCHED, compressResponse);
+        } else {
+           
+            let modifiedResp = {
+                agents: [],
+                total: 0,
+                limit: limit,
+                page: page,
+                totalPages: 0,
+                pagingCounter: 0,
+                hasPrevPage: false,
+                hasNextPage: false,
+                prevPage: null,
+                nextPage: null
+            }
+            const compressResponse = await utils.GZip([modifiedResp]);
+
+            response.Success(responseElement.TRANINGNOTFOUND,compressResponse );
+        }
+
+    } catch (err) {
+        console.log(err);
+        return response.Error(responseElement.SERVERERROR, []);
+    }
+};
+
+
+
+module.exports = { create,allTraning };

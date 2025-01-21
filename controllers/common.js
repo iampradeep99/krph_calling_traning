@@ -11,6 +11,8 @@ const CITY = require('../models/City')
 const LANGUAGE = require('../models/Language')
 const TRANINGMODULE = require('../models/TraningModule')
 const TRANINGMODE = require('../models/TraningMode')
+const REGION = require('../models/Region');
+
 
 
 
@@ -164,9 +166,9 @@ const addSubmenu = async (req, res) => {
             active: active !== undefined ? active : true
         });
 
-        await newSubMenu.save();
+        // await newSubMenu.save();
 
-        parentMenu.submenus.push(newSubMenu._id);
+        parentMenu.submenus.push(newSubMenu);
 
         await parentMenu.save();
 
@@ -255,6 +257,35 @@ const addProfile = async (req, res) => {
     }
   };
 
+
+  const addRegion = async (req, res) => {
+    try {
+      const { name, regionCode, active } = req.body;
+      const existingRegion = await REGION.findOne({
+        $or: [{ name }, { regionCode }]
+      });
+      if (existingRegion) {
+        return res.status(400).json({ message: 'Region with this name or regionCode already exists' });
+      }
+  
+      const newRegion = new REGION({
+        name,
+        regionCode,
+        active: active || true, 
+      });
+  
+      const savedRegion = await newRegion.save();
+  
+      res.status(201).json(savedRegion);
+    } catch (err) {
+      console.error('Error adding region:', err);
+      res.status(500).json({ message: 'Internal server error', error: err.message });
+    }
+  };
+  
+  module.exports = addRegion;
+  
+
   
   
 
@@ -265,4 +296,4 @@ const addProfile = async (req, res) => {
 
 
 
-module.exports = {getCountryStateCity,getAllLanguages,getAllModes,getTraningModules,addMenu,addSubmenu, getMenuWithSubmenus,addProfile};
+module.exports = {getCountryStateCity,getAllLanguages,getAllModes,getTraningModules,addMenu,addSubmenu, getMenuWithSubmenus,addProfile,addRegion};

@@ -1,50 +1,66 @@
 const Joi = require('joi');
 const ResponseHandler = require('../constant/common');
 
-
 const validateAgentData = (req, res, next) => {
-  const response = new ResponseHandler(res)
+  const response = new ResponseHandler(res);
+  
   const schema = Joi.object({
     firstName: Joi.string().min(3).max(50).required(),
     lastName: Joi.string().min(3).max(50).required(),
     email: Joi.string().email().required(),
-    mobile: Joi.string().pattern(/^[0-9]{10}$/).required(),  
+    mobile: Joi.string().pattern(/^[0-9]{10}$/).required(),
     password: Joi.string().min(6).max(20).required(),
-    designation: Joi.string().valid('agent', 'admin', 'moderator').required(), 
-    country: Joi.string().required(),  
-    state: Joi.string().required(),    
-    city: Joi.string().required(), 
-    menuPermission: Joi.array().items(Joi.string().required()).required()
-     
+    designation: Joi.string().valid('agent', 'admin', 'moderator').required(),
+    country: Joi.string().required(),
+    state: Joi.string().required(),
+    city: Joi.string().required(),
+    gender: Joi.number().valid(0, 1, 2).optional(),  // 0 = Male, 1 = Female, 2 = Others
+    dob: Joi.date().optional(),
+    qualification: Joi.string().optional(),
+    experience: Joi.string().optional(),
+    role: Joi.number().valid(0, 1, 2, 3).default(3),  // 0 = SuperAdmin, 1 = Admin, 2 = Moderator, 3 = Agent
+    location: Joi.string().required(),
+    menuPermission: Joi.array().items(Joi.string().required()).required(),  // menuPermission is required
+    assignedProfile: Joi.string().allow('').optional(),// assignedProfile is required for creating an agent
   });
 
   const { error } = schema.validate(req.body);
   if (error) {
-    return response.Error(error.details[0].message, [])
+    return response.Error(error.details[0].message, []);
   }
   next();  // Proceed to the next middleware (i.e., the createAgent function)
 };
 
 const validateAgentDataUpdate = (req, res, next) => {
-  const response = new ResponseHandler(res)
+  const response = new ResponseHandler(res);
+  
+  // Define the Joi schema for updating an agent
   const schema = Joi.object({
     firstName: Joi.string().min(3).max(50).required(),
     lastName: Joi.string().min(3).max(50).required(),
     email: Joi.string().email().required(),
-    mobile: Joi.string().pattern(/^[0-9]{10}$/).required(),  
-    password: Joi.string().min(6).max(20).required(),
-    designation: Joi.string().valid('agent', 'admin', 'moderator').required(), 
-    country: Joi.string().required(),  
-    state: Joi.string().required(),    
-    city: Joi.string().required(),  
-    agentId: Joi.string().required(), 
+    mobile: Joi.string().pattern(/^[0-9]{10}$/).required(),
+    password: Joi.string().min(6).max(20).optional(),  // Password is optional in update
+    designation: Joi.string().valid('agent', 'admin', 'moderator').required(),
+    country: Joi.string().required(),
+    state: Joi.string().required(),
+    city: Joi.string().required(),
+    agentId: Joi.string().required(),  // Agent ID is required for update
+    gender: Joi.number().valid(0, 1, 2).optional(),  // 0 = Male, 1 = Female, 2 = Others
+    dob: Joi.date().optional(),
+    qualification: Joi.string().optional(),
+    experience: Joi.string().optional(),
+    role: Joi.number().valid(0, 1, 2, 3).optional(),
+    location: Joi.string().optional(),
+    menuPermission: Joi.array().items(Joi.string().required()).optional(),  // menuPermission is optional in update
+    assignedProfile: Joi.string().optional(),  // assignedProfile is optional for update
   });
 
   const { error } = schema.validate(req.body);
   if (error) {
-    return response.Error(error.details[0].message, [])
+    return response.Error(error.details[0].message, []);
   }
   next();  // Proceed to the next middleware (i.e., the createAgent function)
 };
 
-module.exports = { validateAgentData,validateAgentDataUpdate };
+module.exports = { validateAgentData, validateAgentDataUpdate };
