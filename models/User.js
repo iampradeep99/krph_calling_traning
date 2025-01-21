@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 const autoIncrement = require('mongoose-auto-increment');
 var aggregatePaginate = require("mongoose-aggregate-paginate-v2");
 
-// Initialize mongoose connection and auto-increment plugin
 autoIncrement.initialize(mongoose.connection);
 
 const userSchema = new mongoose.Schema({
@@ -27,7 +26,7 @@ const userSchema = new mongoose.Schema({
   mobile: {
     type: String,
     required: true,
-    unique: true,  
+    unique: true,
     trim: true,
   },
   designation: {
@@ -37,7 +36,7 @@ const userSchema = new mongoose.Schema({
   },
   country: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Country', 
+    ref: 'Country',
     required: true,
   },
   state: {
@@ -47,26 +46,44 @@ const userSchema = new mongoose.Schema({
   },
   city: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'City', 
+    ref: 'City',
     required: true,
   },
-  privilegeType: {
-    type: Number,
-    enum: [0, 1, 2, 3],
-    default: 3, // Default is Trainer
+  gender: {
+    type: Number,  
+    required: false,
+    enum: [0,1,2],
+    /* 0 = Male, 1 = Female, 2 = Others */
+  },
+  dob: {
+    type: Date,  
+    required: false,
+  },
+  qualification: {
+    type: String, 
+    required: false,
+  },
+  experience: {
+    type: String, 
+    required: false,
+  },
+  role: {
+    type: Number,  // Numeric role identifier
+    enum: [0, 1, 2, 3],  // 0 = SuperAdmin, 1 = Supervisor/Admin, 2 = Trainer, 3 = Agent
+    default: 3  // Default role is Agent
   },
   username: {
     type: String,
     trim: true,
   },
   userNameDigit: {
-    type: String, 
+    type: String,
     unique: true,
     get: function(value) {
       return value.padStart(4, '0');
     },
   },
-  uniqueUserName:{
+  agentId: {
     type: String,
     trim: true,
   },
@@ -85,29 +102,28 @@ const userSchema = new mongoose.Schema({
   token: {
     type: String,
   },
-  status:{
-    type:Number,
+  status: {
+    type: Number,
     enum: [0, 1, 2, 3],
-    default: 0, 
-    /* 
-    0 = Enable,
-    1 = Disable,
-    2 = Inactive,
-    3 = Blocked,
-    */
+    default: 0,
+    // 0 = Enable, 1 = Disable, 2 = Inactive, 3 = Blocked
   },
-  menuPermission: [{
+  
+  assignedProfile: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Menu',
-    required: true
-}],
-assignedProfile:{
-  type: mongoose.Schema.Types.ObjectId,
-  ref: 'Profile',
-}
+    ref: 'Profile',
+  },
+  location: {
+    type:mongoose.Types.ObjectId,
+    ref:'Location'
+  },
+
+  userRefId:{
+    type:mongoose.Types.ObjectId,
+    ref:"User"
+  }
 }, { timestamps: true });
 
-// Apply the auto-increment plugin to the userNameDigit field
 userSchema.plugin(autoIncrement.plugin, {
   model: 'User',
   field: 'userNameDigit',
@@ -115,7 +131,7 @@ userSchema.plugin(autoIncrement.plugin, {
   incrementBy: 1,  // Increment by 1
 });
 
-userSchema.plugin(aggregatePaginate)
+userSchema.plugin(aggregatePaginate);
 const User = mongoose.model('User', userSchema);
 
 module.exports = User;

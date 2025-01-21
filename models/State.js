@@ -15,6 +15,10 @@ const stateSchema = new mongoose.Schema({
     trim: true,
     uppercase: true, // Store state code in uppercase (e.g., "CA" for California)
   },
+  regionCode: [{
+    type: mongoose.Types.ObjectId,
+    ref: "Region", // An array of references to the Region model
+  }],
   country: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Country', // Reference to the Country model

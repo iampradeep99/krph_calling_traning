@@ -9,29 +9,93 @@ const STATE = require('../models/State');
 const { assignProfile } = require('./profile');
 
 
+// const createAgent = async (req, res) => {
+//   try {
+//     const response = new ResponseHandler(res);
+//     const { firstName, lastName, email, mobile, password, designation, country, state, city, menuPermission } = req.body;
+//     const utils = new CommonMethods(firstName, 8);
+//     let compressResponse;
+
+//     const existingUser = await User.findOne({ email });
+//     if (existingUser) {
+//       compressResponse = await utils.GZip([]);
+//       return response.Success("Email is already registered", compressResponse);
+//     }
+
+//     const existingMobile = await User.findOne({ mobile });
+//     if (existingMobile) {
+//       compressResponse = await utils.GZip([]);
+//       return response.Success("Mobile number is already registered", compressResponse);
+//     }
+
+//     const userName = utils.generateRandomAlphanumeric();
+//     const salt = await bcrypt.genSalt(10);
+//     const hashedPassword = await bcrypt.hash(password, salt);
+
+//     const agent = new User({
+//       firstName,
+//       lastName,
+//       email,
+//       mobile,
+//       password: hashedPassword,
+//       designation,
+//       country,
+//       state,
+//       city,
+//       username: firstName.toUpperCase(),
+//       menuPermission
+//     });
+
+//     let savedInfo = await agent.save();
+//     if (savedInfo) {
+//       await User.findOneAndUpdate({ _id: mongoose.Types.ObjectId(savedInfo._id) }, { $set: { uniqueUserName: `${savedInfo.username}-${savedInfo.userNameDigit}` } }, { new: true });
+//     }
+
+//     const agentResponse = {
+//       firstName: agent.firstName,
+//       lastName: agent.lastName,
+//       email: agent.email,
+//       mobile: agent.mobile,
+//       designation: agent.designation,
+//       country: agent.country,
+//       state: agent.state,
+//       city: agent.city,
+//       privilegeType: agent.privilegeType,
+//       menuPermission: agent.menuPermission
+//     };
+
+//     compressResponse = await utils.GZip(agentResponse);
+//     return response.Success(responseElement.AGENTADD, compressResponse);
+
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: 'Server error, could not create agent' });
+//   }
+// };
+
 const createAgent = async (req, res) => {
   try {
     const response = new ResponseHandler(res);
-    const { firstName, lastName, email, mobile, password, designation, country, state, city, menuPermission } = req.body;
+    const { firstName, lastName, email, mobile, password, designation, country, state, city, gender, dob, qualification, experience, location, assignedProfile } = req.body;
     const utils = new CommonMethods(firstName, 8);
     let compressResponse;
 
+    // Check if email is already registered
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       compressResponse = await utils.GZip([]);
       return response.Success("Email is already registered", compressResponse);
     }
 
+    // Check if mobile is already registered
     const existingMobile = await User.findOne({ mobile });
     if (existingMobile) {
       compressResponse = await utils.GZip([]);
       return response.Success("Mobile number is already registered", compressResponse);
     }
-
     const userName = utils.generateRandomAlphanumeric();
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-
     const agent = new User({
       firstName,
       lastName,
@@ -42,13 +106,23 @@ const createAgent = async (req, res) => {
       country,
       state,
       city,
+      gender,
+      dob,
+      qualification,
+      experience,
       username: firstName.toUpperCase(),
-      menuPermission
+      location,
+      assignedProfile,
+      status: 0, 
     });
 
     let savedInfo = await agent.save();
     if (savedInfo) {
-      await User.findOneAndUpdate({ _id: mongoose.Types.ObjectId(savedInfo._id) }, { $set: { uniqueUserName: `${savedInfo.username}-${savedInfo.userNameDigit}` } }, { new: true });
+      await User.findOneAndUpdate(
+        { _id: mongoose.Types.ObjectId(savedInfo._id) },
+        { $set: { uniqueUserName: `${savedInfo.username}-${savedInfo.userNameDigit}`, agentId: `AGT-${savedInfo.userNameDigit}` } },
+        { new: true }
+      );
     }
 
     const agentResponse = {
@@ -60,10 +134,15 @@ const createAgent = async (req, res) => {
       country: agent.country,
       state: agent.state,
       city: agent.city,
-      privilegeType: agent.privilegeType,
-      menuPermission: agent.menuPermission
+      gender: agent.gender,
+      dob: agent.dob,
+      qualification: agent.qualification,
+      experience: agent.experience,
+      username: agent.username,
+      status: agent.status,
+      location: agent.location,
+      assignedProfile: agent.assignedProfile
     };
-
     compressResponse = await utils.GZip(agentResponse);
     return response.Success(responseElement.AGENTADD, compressResponse);
 
@@ -75,12 +154,12 @@ const createAgent = async (req, res) => {
 
 
 const updateAgent = async (req, res) => {
-    const response = new ResponseHandler(res);
-    const utils = new CommonMethods(firstName, 8);
-  try {
-    const { agentId, firstName, lastName, email, mobile, password, designation, country, state, city } = req.body;
-    let compressResponse;
+  const response = new ResponseHandler(res);
+  const { agentId, firstName, lastName, email, mobile, password, designation, country, state, city, gender, dob, qualification, experience, location, assignedProfile } = req.body;
+  const utils = new CommonMethods(firstName, 8);
+  let compressResponse;
 
+  try {
     const agent = await User.findById(agentId);
     if (!agent) {
       compressResponse = await utils.GZip([]);
@@ -88,10 +167,14 @@ const updateAgent = async (req, res) => {
     }
 
     if (email && email !== agent.email) {
-      compressResponse = await utils.GZip([]);
-      return response.Success("Email cannot be updated", compressResponse);
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        compressResponse = await utils.GZip([]);
+        return response.Success("Email is already registered", compressResponse);
+      }
     }
 
+    // Check if mobile is being changed and if it's already registered
     if (mobile && mobile !== agent.mobile) {
       const existingMobile = await User.findOne({ mobile, _id: { $ne: agentId } });
       if (existingMobile) {
@@ -106,26 +189,41 @@ const updateAgent = async (req, res) => {
       agent.password = hashedPassword;
     }
 
+    // Update agent information with provided fields or keep existing ones
     agent.firstName = firstName || agent.firstName;
     agent.lastName = lastName || agent.lastName;
+    agent.email = email || agent.email;  // Email is only updated if a new one is provided
     agent.mobile = mobile || agent.mobile;
     agent.designation = designation || agent.designation;
     agent.country = country || agent.country;
     agent.state = state || agent.state;
     agent.city = city || agent.city;
+    agent.gender = gender || agent.gender;
+    agent.dob = dob || agent.dob;
+    agent.qualification = qualification || agent.qualification;
+    agent.experience = experience || agent.experience;
+    agent.location = location || agent.location;
+    agent.assignedProfile = assignedProfile || agent.assignedProfile;
 
-   let savedInfo =  await agent.save();
+    let savedInfo = await agent.save();
 
     const agentResponse = {
       firstName: agent.firstName,
       lastName: agent.lastName,
-      email: agent.email,  
+      email: agent.email,
       mobile: agent.mobile,
       designation: agent.designation,
       country: agent.country,
       state: agent.state,
       city: agent.city,
-      privilegeType: agent.privilegeType,
+      gender: agent.gender,
+      dob: agent.dob,
+      qualification: agent.qualification,
+      experience: agent.experience,
+      username: agent.username,
+      status: agent.status,
+      location: agent.location,
+      assignedProfile: agent.assignedProfile,
     };
 
     compressResponse = await utils.GZip(agentResponse);
@@ -133,9 +231,11 @@ const updateAgent = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    return response.Error('Server error, could not update agent',[])
+    compressResponse = await utils.GZip([]);
+    return response.Error('Server error, could not update agent', compressResponse);
   }
 };
+
 
 
 
@@ -143,17 +243,26 @@ const agentList = async (req, res) => {
   const response = new ResponseHandler(res);
   const utils = new CommonMethods();
   try {
-    const { page = 1, limit = 10, searchQuery = '' } = req.body;
-    let searchCondition = {};
+    const { page = 1, limit = 10, searchQuery = '', role } = req.body;
+    if(!role){
+      return response.Error("Role is required", [])
+    }
+    const validRoles = [0, 1, 2, 3];
+    if (!validRoles.includes(parseInt(role))) {
+      return response.Error("Please enter a valid role", []);
+    }
+    let searchCondition = { status: 0 }; 
+    
+    if (role) {
+      searchCondition.role = role;
+    }
+
     if (searchQuery) {
-      searchCondition = {
-        status: 0,
-        $or: [
-          { firstName: { $regex: searchQuery, $options: 'i' } },
-          { lastName: { $regex: searchQuery, $options: 'i' } },
-          { uniqueUserName: { $regex: searchQuery, $options: 'i' } },
-        ],
-      };
+      searchCondition.$or = [
+        { firstName: { $regex: searchQuery, $options: 'i' } },
+        { lastName: { $regex: searchQuery, $options: 'i' } },
+        { uniqueUserName: { $regex: searchQuery, $options: 'i' } },
+      ];
     }
 
     let query = [
@@ -209,30 +318,29 @@ const agentList = async (req, res) => {
         }
       },
       {
-        $project:{
-          firstName:1,
-          lastName:1,
-          email:1,
-          mobile:1,
-          designation:1,
-          country:{
-            name:"$country.name",
-            _id:"$country._id",
-            code:"$country.countryCode"
+        $project: {
+          firstName: 1,
+          lastName: 1,
+          email: 1,
+          mobile: 1,
+          designation: 1,
+          country: {
+            name: "$country.name",
+            _id: "$country._id",
+            code: "$country.countryCode"
           },
-          state:{
-            name:"$state.name",
-            _id:"$state._id",
-            code:"$state.stateCode"
+          state: {
+            name: "$state.name",
+            _id: "$state._id",
+            code: "$state.stateCode"
           },
-          city:{
-            name:"$city.name",
-            _id:"$city._id",
-            code:"$city.cityCode"
+          city: {
+            name: "$city.name",
+            _id: "$city._id",
+            code: "$city.cityCode"
           },
-          uniqueUserName:1,
-          privilegeType:1
-
+          uniqueUserName: 1,
+          role: 1
         }
       }
     ];
@@ -257,6 +365,7 @@ const agentList = async (req, res) => {
     return response.Error(responseElement.INTERNAL_ERROR, err.message);
   }
 };
+
 
 
 const disableAgent = async (req, res) => {

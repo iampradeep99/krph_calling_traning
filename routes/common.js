@@ -15,6 +15,8 @@ router.post('/addMenu', COMMONCONTROLLER.addMenu)
 router.post('/addSubmenu', COMMONCONTROLLER.addSubmenu)
 router.post('/getMenu', COMMONCONTROLLER.getMenuWithSubmenus)
 router.post('/addProfile', COMMONCONTROLLER.addProfile)
+router.post('/addRegion', COMMONCONTROLLER.addRegion)
+
 
 
 
