@@ -62,7 +62,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: Number,  // Numeric role identifier
-    enum: [0, 1, 2, 3],  // 0 = SuperAdmin, 1 = Supervisor/Admin, 2 = Trainer, 3 = Agent
+    enum: [0, 1, 2, 3],  // 0 = SuperAdmin, 1 = Trainer/Admin, 2 = Supervisor, 3 = Agent
     default: 3  // Default role is Agent
   },
   userName: {

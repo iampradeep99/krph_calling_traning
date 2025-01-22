@@ -11,6 +11,11 @@ router.post('/allAgent',authenticate.verifyToken,  USER.agentList);
 router.put('/status',authenticate.verifyToken,  USER.disableAgent);
 router.post('/getById',authenticate.verifyToken,  USER.getUserById);
 
+router.post('/addUpdateTrainerOrAdmin',authenticate.verifyToken, agentValidation.validateAdminOrTrainerData,  USER.addUpdateAdminOrTrainer);
+
+
+
+
 
 
 

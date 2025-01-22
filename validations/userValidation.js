@@ -63,4 +63,55 @@ const validateAgentDataUpdate = (req, res, next) => {
   next();  // Proceed to the next middleware (i.e., the createAgent function)
 };
 
-module.exports = { validateAgentData, validateAgentDataUpdate };
+const validateAdminOrTrainerData = (req, res, next) => {
+  const response = new ResponseHandler(res);
+
+  const schema = Joi.object({
+    firstName: Joi.string().min(3).max(50).required().messages({
+      'any.required': 'First name is required',
+    }),
+    lastName: Joi.string().min(3).max(50).required().messages({
+      'any.required': 'Last name is required',
+    }),
+    email: Joi.string().email().required().messages({
+      'any.required': 'Email is required',
+      'string.email': 'Invalid email format',
+    }),
+    mobile: Joi.string().pattern(/^[0-9]{10}$/).required().messages({
+      'any.required': 'Mobile number is required',
+      'string.pattern.base': 'Invalid mobile number format',
+    }),
+    role: Joi.number().valid(0, 1, 2, 3).default(1).messages({
+      'number.base': 'Invalid role value',
+    }),
+    gender: Joi.number().valid(0, 1, 2).required().messages({
+      'any.required': 'Gender is required',
+      'number.base': 'Invalid gender value',
+    }),
+    region: Joi.string().required().messages({
+      'any.required': 'Region is required',
+    }),
+    state: Joi.string().required().messages({
+      'any.required': 'State is required',
+    }),
+    city: Joi.string().required().messages({
+      'any.required': 'City is required',
+    }),
+    dob: Joi.date().required().messages({
+      'any.required': 'Date of Birth is required',
+      'date.base': 'Invalid Date of Birth format',
+    }),
+    _id: Joi.string().optional(), // _id is optional for new users
+  });
+
+  // Validate the request body using Joi
+  const { error } = schema.validate(req.body);
+  if (error) {
+    return response.Error(error.details[0].message, []);
+  }
+
+  // Proceed to the next middleware/controller
+  next();
+};
+
+module.exports = { validateAgentData, validateAgentDataUpdate,validateAdminOrTrainerData };

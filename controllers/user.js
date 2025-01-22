@@ -7,6 +7,8 @@ const mongoose = require('mongoose');
 const { request } = require('../app');
 const STATE = require('../models/State');
 const { assignProfile } = require('./profile');
+const Mailer = require('../middlewares/sendMail');
+const templates = require('../templates/accountTemplate')
 
 
 // const createAgent = async (req, res) => {
@@ -76,6 +78,7 @@ const { assignProfile } = require('./profile');
 const createAgent = async (req, res) => {
   try {
       const response = new ResponseHandler(res);
+      const mailer = new Mailer();
       let newUserName;
       const {
           firstName,
@@ -155,6 +158,15 @@ const createAgent = async (req, res) => {
       });
 
       let savedInfo = await agent.save();
+      if(savedInfo){
+        const to = savedInfo.email;
+        const subject = 'CSC Agent Training';
+        const text = '';
+        const html = await templates.accountDetails(savedInfo.email,newPassword,savedInfo.firstName,"http://45.250.3.34/" )
+        await mailer.sendMail(to, subject, text, html);
+        console.log('Email sent successfully');
+  
+       }
 
       const agentResponse = {
           firstName: agent.firstName,
@@ -162,7 +174,7 @@ const createAgent = async (req, res) => {
           email: agent.email,
           mobile: agent.mobile,
           designation: agent.designation,
-          country: agent.country,
+          region: agent.region,
           state: agent.state,
           city: agent.city,
           gender: agent.gender,
@@ -185,51 +197,29 @@ const createAgent = async (req, res) => {
   }
 };
 
-
-
 const updateAgent = async (req, res) => {
   const response = new ResponseHandler(res);
-  const { agentId, firstName, lastName, email, mobile, password, designation, country, state, city, gender, dob, qualification, experience, location, assignedProfile } = req.body;
+  const { 
+    agentId, firstName, lastName, mobile, designation, region,  // Changed 'country' to 'region'
+    state, city, gender, dob, qualification, experience, location, assignedProfile 
+  } = req.body;
+  
   const utils = new CommonMethods(firstName, 8);
   let compressResponse;
 
   try {
     const agent = await User.findById(agentId);
     if (!agent) {
-      compressResponse = await utils.GZip([]);
+      compressResponse = await utils.GZip({ message: 'Agent not found' });
       return response.Success("Agent not found", compressResponse);
     }
 
-    if (email && email !== agent.email) {
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        compressResponse = await utils.GZip([]);
-        return response.Success("Email is already registered", compressResponse);
-      }
-    }
-
-    // Check if mobile is being changed and if it's already registered
-    if (mobile && mobile !== agent.mobile) {
-      const existingMobile = await User.findOne({ mobile, _id: { $ne: agentId } });
-      if (existingMobile) {
-        compressResponse = await utils.GZip([]);
-        return response.Success("Mobile number is already registered", compressResponse);
-      }
-    }
-
-    if (password) {
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-      agent.password = hashedPassword;
-    }
-
-    // Update agent information with provided fields or keep existing ones
+    // Assigning values with fallback to existing agent data
     agent.firstName = firstName || agent.firstName;
     agent.lastName = lastName || agent.lastName;
-    agent.email = email || agent.email;  // Email is only updated if a new one is provided
     agent.mobile = mobile || agent.mobile;
     agent.designation = designation || agent.designation;
-    agent.country = country || agent.country;
+    agent.region = region || agent.region;  // Using 'region' instead of 'country'
     agent.state = state || agent.state;
     agent.city = city || agent.city;
     agent.gender = gender || agent.gender;
@@ -237,7 +227,7 @@ const updateAgent = async (req, res) => {
     agent.qualification = qualification || agent.qualification;
     agent.experience = experience || agent.experience;
     agent.location = location || agent.location;
-    agent.assignedProfile = assignedProfile || agent.assignedProfile;
+    agent.assignedProfile = assignedProfile || agent.assignedProfile; // Add assignedProfile if provided
 
     let savedInfo = await agent.save();
 
@@ -247,7 +237,7 @@ const updateAgent = async (req, res) => {
       email: agent.email,
       mobile: agent.mobile,
       designation: agent.designation,
-      country: agent.country,
+      region: agent.region,  // Make sure region is included in the response
       state: agent.state,
       city: agent.city,
       gender: agent.gender,
@@ -265,10 +255,79 @@ const updateAgent = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    compressResponse = await utils.GZip([]);
+    compressResponse = await utils.GZip({ message: 'Server error, could not update agent' });
     return response.Error('Server error, could not update agent', compressResponse);
   }
 };
+
+
+
+const addUpdateAdminOrTrainer = async (req, res) => {
+  const response = new ResponseHandler(res);
+  const { generateRandomPassword } = new CommonMethods();
+  const mailer = new Mailer();
+  const utils = new CommonMethods();
+  try {
+    const { userId: addedBy } = req.user;
+    const { _id,email, mobile } = req.body;
+    let compressResponse;
+
+    const [isEmailExist, isMobileExist] = await Promise.all([
+      User.findOne({ email }),
+      User.findOne({ mobile })
+    ]);
+
+    if (isEmailExist) {
+      compressResponse = await utils.GZip([]);
+      return response.Error("Email already exists", compressResponse);
+    }
+    if (isMobileExist) {
+      compressResponse = await utils.GZip([]);
+      return response.Error("Mobile number already exists", compressResponse);
+    }
+
+    if (_id) {
+      const existingUser = await User.findById(_id);
+      if (!existingUser) {
+        compressResponse = await utils.GZip([]);
+        return response.Error("User not found", compressResponse);
+      }
+      let updatedData = await User.findByIdAndUpdate(_id, req.body, { new: true });
+      compressResponse = await utils.GZip([updatedData]);
+      
+      return response.Success("Admin/trainer Updated Successfully", compressResponse);
+    } else {
+      const newPassword = generateRandomPassword(8);
+      const hashedPassword = await bcrypt.hash(newPassword, await bcrypt.genSalt(10));
+
+      const newUser = new User({
+        ...req.body,
+        password: hashedPassword,
+        passwordPlain: newPassword,
+        userRefId: addedBy
+      });
+     let addedUser =  await newUser.save();
+     compressResponse = await utils.GZip([addedUser]);
+     if(addedUser){
+      const to = addedUser.email;
+      const subject = 'CSC Agent Training';
+      const text = '';
+      const html = await templates.accountDetails(addedUser.email,newPassword,addedUser.firstName,"http://45.250.3.34/" )
+      await mailer.sendMail(to, subject, text, html);
+      console.log('Email sent successfully');
+
+     }
+
+      return response.Success("Admin/Trainer Added Successfully", compressResponse, { password: newPassword });
+    }
+  } catch (err) {
+    console.error("Error in addUpdateAdminOrTrainer:", err);
+    return response.Error("Server error", []);
+  }
+};
+
+
+
 
 
 
@@ -785,4 +844,4 @@ const getUserById = async (req, res) => {
 
 
 
-module.exports = { createAgent,updateAgent,agentList,disableAgent, getUserById};
+module.exports = { createAgent,updateAgent,agentList,disableAgent, getUserById,addUpdateAdminOrTrainer};
