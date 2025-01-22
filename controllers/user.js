@@ -592,7 +592,7 @@ const getUserById = async (req, res) => {
                 mobile: 1,
                 designation: 1,
                 status: 1,
-                uniqueUserName: 1,
+                userName: 1,
                 assignedProfile: 1,
               },
             },
@@ -600,22 +600,22 @@ const getUserById = async (req, res) => {
           country: [
             {
               $lookup: {
-                from: "countries",
-                localField: "country",
+                from: "regions",
+                localField: "region",
                 foreignField: "_id",
-                as: "country",
+                as: "region",
               },
             },
             {
               $unwind: {
-                path: "$country",
+                path: "$region",
                 preserveNullAndEmptyArrays: true,
               },
             },
             {
               $project: {
-                _id: "$country._id",
-                name: "$country.name",
+                _id: "$region._id",
+                name: "$region.name",
               },
             },
           ],
@@ -673,7 +673,7 @@ const getUserById = async (req, res) => {
           mobile: { $arrayElemAt: ["$user.mobile", 0] },
           designation: { $arrayElemAt: ["$user.designation", 0] },
           status: { $arrayElemAt: ["$user.status", 0] },
-          uniqueUserName: { $arrayElemAt: ["$user.uniqueUserName", 0] },
+          userName: { $arrayElemAt: ["$user.userName", 0] },
           country: { $arrayElemAt: ["$country", 0] },
           state: { $arrayElemAt: ["$state", 0] },
           city: { $arrayElemAt: ["$city", 0] },
@@ -710,7 +710,7 @@ const getUserById = async (req, res) => {
         mobile: 1,
         designation:1,
         status:1,
-        uniqueUserName:1,
+        userName:1,
         country:1,
         state: 1,
         city: 1,

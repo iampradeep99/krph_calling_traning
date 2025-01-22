@@ -21,32 +21,42 @@ const REGION = require('../models/Region');
 const getCountryStateCity = async (req, res) => {
     const response = new ResponseHandler(res);
     const utils = new CommonMethods();
-
+  
     try {
-
       let { _id, mode } = req.body;
-        let compressResponse;
+      let compressResponse;
       let query = { type: mode };
       if (mode === responseElement.STATEMODE) {
-        query = { country: mongoose.Types.ObjectId(_id), type: mode }; 
+        query = {
+          regionCode: mongoose.Types.ObjectId(_id),  
+          type: mode
+        };
       } else if (mode === responseElement.CITYMODE) {
-        query = { state: mongoose.Types.ObjectId(_id), type: mode }; 
+        query = { state: mongoose.Types.ObjectId(_id), type: mode };
       }
+  
       let getData;
-      if (mode === responseElement.COUNTRYMODE) {
-        getData = await COUNTRY.find(query); 
+      if (mode === responseElement.REGIONMODE) {
+        getData = await REGION.find(query);
       } else if (mode === responseElement.STATEMODE) {
-        getData = await STATE.find(query); 
+        getData = await STATE.find(query);
       } else if (mode === responseElement.CITYMODE) {
-        getData = await CITY.find(query); 
+        getData = await CITY.find(query);
       }
-      compressResponse = await utils.GZip(getData);
-      return response.Success("Fetched Successfully",compressResponse)
+  
+      if (getData) {
+        compressResponse = await utils.GZip(getData);
+        return response.Success("Fetched Successfully", compressResponse);
+      } else {
+        return response.Error("No data found", []);
+      }
     } catch (err) {
       console.log(err);
-      return response.Error(responseElement.SERVERERROR, [])
+      return response.Error(responseElement.SERVERERROR, []);
     }
   };
+  
+  
   
 
   const getAllLanguages = async(req, res)=>{

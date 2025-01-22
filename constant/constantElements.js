@@ -16,6 +16,7 @@ module.exports = {
     CITYMODE:"city",
     COUNTRYMODE:"country",
     STATEMODE:"state",
+    REGIONMODE :"region"
 
 
 
