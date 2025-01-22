@@ -75,73 +75,113 @@ const { assignProfile } = require('./profile');
 
 const createAgent = async (req, res) => {
   try {
-    const response = new ResponseHandler(res);
-    const { firstName, lastName, email, mobile, designation, role, region, state, city, gender, dob, qualification, experience, location, refId } = req.body;
-    const utils = new CommonMethods(firstName, 8);
-    let compressResponse;
-    const userName = utils.generateRandomAlphanumeric();
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      compressResponse = await utils.GZip([]);
-      return response.Success("Email is already registered", compressResponse);
-    }
+      const response = new ResponseHandler(res);
+      let newUserName;
+      const {
+          firstName,
+          lastName,
+          email,
+          mobile,
+          designation,
+          role,
+          region,
+          state,
+          city,
+          gender,
+          dob,
+          qualification,
+          experience,
+          location,
+          refId
+      } = req.body;
+      const utils = new CommonMethods(firstName, 8);
+      if (role == 3) {
+          let getLastRecord = await User.find({
+                  role: 3
+              })
+              .sort({
+                  createdAt: -1
+              })
+              .limit(1);
 
-    const existingMobile = await User.findOne({ mobile });
-    if (existingMobile) {
-      compressResponse = await utils.GZip([]);
-      return response.Success("Mobile number is already registered", compressResponse);
-    }
+          if (getLastRecord.length > 0) {
+              const lastUserName = getLastRecord[0].userName;
+              const lastNumber = parseInt(lastUserName.split('-')[1], 10);
+              const newNumber = lastNumber + 1;
+              newUserName = `AGT-${newNumber.toString().padStart(4, '0')}`;
+          }
+      }
 
-    let newPassword = utils.generateRandomPassword(8);
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
-    const agent = new User({
-      firstName,
-      lastName,
-      email,
-      mobile,
-      password: hashedPassword,
-      designation,
-      region,
-      state,
-      city,
-      gender,
-      dob,
-      qualification,
-      experience,
-      location,
-      status: 0,
-      userName,
-      role: role,
-      userRefId: refId,
-      passwordPlain:newPassword
-    });
+      const existingUser = await User.findOne({
+          email
+      });
+      if (existingUser) {
+          let compressResponse = await utils.GZip([]);
+          return response.Success("Email is already registered", compressResponse);
+      }
 
-    let savedInfo = await agent.save();
+      const existingMobile = await User.findOne({
+          mobile
+      });
+      if (existingMobile) {
+          let compressResponse = await utils.GZip([]);
+          return response.Success("Mobile number is already registered", compressResponse);
+      }
 
-    const agentResponse = {
-      firstName: agent.firstName,
-      lastName: agent.lastName,
-      email: agent.email,
-      mobile: agent.mobile,
-      designation: agent.designation,
-      country: agent.country,
-      state: agent.state,
-      city: agent.city,
-      gender: agent.gender,
-      dob: agent.dob,
-      qualification: agent.qualification,
-      experience: agent.experience,
-      status: agent.status,
-      location: agent.location,
-      assignedProfile: agent.assignedProfile
-    };
-    compressResponse = await utils.GZip(agentResponse);
-    return response.Success(responseElement.AGENTADD, compressResponse);
+      let newPassword = utils.generateRandomPassword(8);
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+      const agent = new User({
+          firstName,
+          lastName,
+          email,
+          mobile,
+          password: hashedPassword,
+          designation,
+          region,
+          state,
+          city,
+          gender,
+          dob,
+          qualification,
+          experience,
+          location,
+          status: 0,
+          userName: newUserName,
+          role: role,
+          userRefId: refId,
+          passwordPlain: newPassword
+      });
+
+      let savedInfo = await agent.save();
+
+      const agentResponse = {
+          firstName: agent.firstName,
+          lastName: agent.lastName,
+          email: agent.email,
+          mobile: agent.mobile,
+          designation: agent.designation,
+          country: agent.country,
+          state: agent.state,
+          city: agent.city,
+          gender: agent.gender,
+          dob: agent.dob,
+          qualification: agent.qualification,
+          experience: agent.experience,
+          status: agent.status,
+          location: agent.location,
+          assignedProfile: agent.assignedProfile
+      };
+
+      let compressResponse = await utils.GZip(agentResponse);
+      return response.Success(responseElement.AGENTADD, compressResponse);
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error, could not create agent' });
+      console.error(err);
+      res.status(500).json({
+          message: 'Server error, could not create agent'
+      });
   }
 };
 
