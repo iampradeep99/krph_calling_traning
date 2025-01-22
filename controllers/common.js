@@ -47,7 +47,7 @@ const getCountryStateCity = async (req, res) => {
   
       if (getData) {
         compressResponse = await utils.GZip(getData);
-        return response.Success("Fetched Successfully", getData);
+        return response.Success("Fetched Successfully", compressResponse);
       } else {
         return response.Error("No data found", []);
       }
