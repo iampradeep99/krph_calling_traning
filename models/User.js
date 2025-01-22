@@ -8,46 +8,37 @@ autoIncrement.initialize(mongoose.connection);
 const userSchema = new mongoose.Schema({
   firstName: {
     type: String,
-    required: true,
-    trim: true,
+    
   },
   lastName: {
     type: String,
-    required: true,
-    trim: true,
+    
   },
   email: {
     type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    lowercase: true,
+    
+    
   },
   mobile: {
     type: String,
-    required: true,
-    unique: true,
-    trim: true,
+   
+    
   },
   designation: {
     type: String,
-    required: true,
-    trim: true,
+    
   },
   country: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Country',
-    required: true,
   },
   state: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'State',
-    required: true,
   },
   city: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'City',
-    required: true,
   },
   gender: {
     type: Number,  
@@ -78,7 +69,6 @@ const userSchema = new mongoose.Schema({
   },
   userNameDigit: {
     type: String,
-    unique: true,
     get: function(value) {
       return value.padStart(4, '0');
     },
@@ -89,7 +79,6 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true,
   },
   insertDateTime: {
     type: Date,
