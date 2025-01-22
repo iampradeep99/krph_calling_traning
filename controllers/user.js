@@ -448,7 +448,7 @@ const agentList = async (req, res) => {
 
     if (getData && getData.agents.length > 0) {
       const compressResponse = await utils.GZip(getData);
-      response.Success(responseElement.AGENTFETCHED, getData);
+      response.Success(responseElement.AGENTFETCHED, compressResponse);
     } else {
       response.Success(responseElement.NO_AGENTS_FOUND, []);
     }
