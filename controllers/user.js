@@ -255,7 +255,7 @@ const agentList = async (req, res) => {
       searchCondition.$or = [
         { firstName: { $regex: searchQuery, $options: 'i' } },
         { lastName: { $regex: searchQuery, $options: 'i' } },
-        { uniqueUserName: { $regex: searchQuery, $options: 'i' } },
+        { userName: { $regex: searchQuery, $options: 'i' } },
       ];
     }
 
@@ -266,20 +266,20 @@ const agentList = async (req, res) => {
           createdAt: -1, 
           email: 1,       
           mobile: 1,      
-          uniqueUserName: 1 
+          userName: 1 
         }
       },
       {
         $lookup: {
-          from: 'countries',  
-          localField: 'country',  
+          from: 'regions',  
+          localField: 'region',  
           foreignField: '_id',  
-          as: 'country', 
+          as: 'region', 
         }
       },
       {
         $unwind: {
-          path: '$country',
+          path: '$region',
           preserveNullAndEmptyArrays: true,
         }
       },
@@ -318,10 +318,9 @@ const agentList = async (req, res) => {
           email: 1,
           mobile: 1,
           designation: 1,
-          country: {
-            name: "$country.name",
-            _id: "$country._id",
-            code: "$country.countryCode"
+          region: {
+            name: "$region.name",
+            _id: "$region._id",
           },
           state: {
             name: "$state.name",
@@ -333,7 +332,7 @@ const agentList = async (req, res) => {
             _id: "$city._id",
             code: "$city.cityCode"
           },
-          uniqueUserName: 1,
+          userName: 1,
           role: 1
         }
       }
@@ -350,7 +349,7 @@ const agentList = async (req, res) => {
 
     if (getData && getData.agents.length > 0) {
       const compressResponse = await utils.GZip(getData);
-      response.Success(responseElement.AGENTFETCHED, compressResponse);
+      response.Success(responseElement.AGENTFETCHED, getData);
     } else {
       response.Success(responseElement.NO_AGENTS_FOUND, []);
     }
