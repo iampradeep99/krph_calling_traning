@@ -12,6 +12,7 @@ const LANGUAGE = require('../models/Language')
 const TRANINGMODULE = require('../models/TraningModule')
 const TRANINGMODE = require('../models/TraningMode')
 const REGION = require('../models/Region');
+const QUALIFICATION = require('../models/Qualification');
 
 
 
@@ -46,7 +47,7 @@ const getCountryStateCity = async (req, res) => {
   
       if (getData) {
         compressResponse = await utils.GZip(getData);
-        return response.Success("Fetched Successfully", compressResponse);
+        return response.Success("Fetched Successfully", getData);
       } else {
         return response.Error("No data found", []);
       }
@@ -235,7 +236,7 @@ const getMenuWithSubmenus = async (req, res) => {
 
 
 
-const Profile = require('../models/Profile');  // Assuming the Profile schema is in the 'models' directory
+const Profile = require('../models/Profile');  
 
 const addProfile = async (req, res) => {
     try {
@@ -292,13 +293,57 @@ const addProfile = async (req, res) => {
       res.status(500).json({ message: 'Internal server error', error: err.message });
     }
   };
+
+
+  const getQualification = async(req, res)=>{
+    const response = new ResponseHandler(res);
+    const utils = new CommonMethods();
+    try{
+        let {} = req.body;
+        let query = {}
+        let getQualification = await QUALIFICATION.find(query)
+        if(getQualification.length > 0){
+            compressResponse = await utils.GZip(getQualification);
+            return response.Success("Qualification fetched",compressResponse)
+        }else{
+            return response.Error("No Record Found",[])
+        }
+
+    }catch(err){
+        console.log(err)
+        return response.Error(responseElement.SERVERERROR,[])
+    }
+  }
   
-  module.exports = addRegion;
+
+  const addQualification = async (req, res) => {
+    try {
+      const { name } = req.body;  // Assuming the qualification name is sent in the body
+  
+      if (!name) {
+        return res.status(400).json({ message: 'Qualification name is required' });
+      }
+  
+      const newQualification = new QUALIFICATION({
+        name
+      });
+  
+      await newQualification.save();
+  
+      res.status(201).json({ message: 'Qualification added successfully', qualification: newQualification });
+  
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Server error' });
+    }
+  };
   
 
   
   
 
+  
+  
 
 
 
@@ -306,4 +351,5 @@ const addProfile = async (req, res) => {
 
 
 
-module.exports = {getCountryStateCity,getAllLanguages,getAllModes,getTraningModules,addMenu,addSubmenu, getMenuWithSubmenus,addProfile,addRegion};
+
+module.exports = {getCountryStateCity,getAllLanguages,getAllModes,getTraningModules,addMenu,addSubmenu, getMenuWithSubmenus,addProfile,addRegion,addQualification,getQualification};

@@ -53,11 +53,11 @@ const userSchema = new mongoose.Schema({
     required: false,
   },
   qualification: {
-    type: String, 
-    required: false,
+  type:mongoose.Schema.Types.ObjectId,
+  ref:"Qualification"
   },
   experience: {
-    type: String, 
+    type: Number, 
     required: false,
   },
   role: {
