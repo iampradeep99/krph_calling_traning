@@ -76,26 +76,25 @@ const { assignProfile } = require('./profile');
 const createAgent = async (req, res) => {
   try {
     const response = new ResponseHandler(res);
-    const { firstName, lastName, email, mobile, password, designation, country, state, city, gender, dob, qualification, experience, location, assignedProfile } = req.body;
+    const { firstName, lastName, email, mobile, designation, role, region, state, city, gender, dob, qualification, experience, location, refId } = req.body;
     const utils = new CommonMethods(firstName, 8);
     let compressResponse;
-
-    // Check if email is already registered
+    const userName = utils.generateRandomAlphanumeric();
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       compressResponse = await utils.GZip([]);
       return response.Success("Email is already registered", compressResponse);
     }
 
-    // Check if mobile is already registered
     const existingMobile = await User.findOne({ mobile });
     if (existingMobile) {
       compressResponse = await utils.GZip([]);
       return response.Success("Mobile number is already registered", compressResponse);
     }
-    const userName = utils.generateRandomAlphanumeric();
+
+    let newPassword = utils.generateRandomPassword(8);
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
     const agent = new User({
       firstName,
       lastName,
@@ -103,27 +102,22 @@ const createAgent = async (req, res) => {
       mobile,
       password: hashedPassword,
       designation,
-      country,
+      region,
       state,
       city,
       gender,
       dob,
       qualification,
       experience,
-      username: firstName.toUpperCase(),
       location,
-      assignedProfile,
-      status: 0, 
+      status: 0,
+      userName,
+      role: role,
+      userRefId: refId,
+      passwordPlain:newPassword
     });
 
     let savedInfo = await agent.save();
-    if (savedInfo) {
-      await User.findOneAndUpdate(
-        { _id: mongoose.Types.ObjectId(savedInfo._id) },
-        { $set: { uniqueUserName: `${savedInfo.username}-${savedInfo.userNameDigit}`, agentId: `AGT-${savedInfo.userNameDigit}` } },
-        { new: true }
-      );
-    }
 
     const agentResponse = {
       firstName: agent.firstName,
@@ -138,7 +132,6 @@ const createAgent = async (req, res) => {
       dob: agent.dob,
       qualification: agent.qualification,
       experience: agent.experience,
-      username: agent.username,
       status: agent.status,
       location: agent.location,
       assignedProfile: agent.assignedProfile
@@ -151,6 +144,7 @@ const createAgent = async (req, res) => {
     res.status(500).json({ message: 'Server error, could not create agent' });
   }
 };
+
 
 
 const updateAgent = async (req, res) => {

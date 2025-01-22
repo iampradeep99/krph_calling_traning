@@ -18,7 +18,7 @@ class CommonMethods {
         }
 
         const formattedName = this.name.toUpperCase(); // Convert name to uppercase
-        const result = formattedName + randomPart;
+        const result = formattedName +'-'+ randomPart;
         return result;
     }
 
@@ -50,6 +50,33 @@ class CommonMethods {
        
 
         return jwt.sign(payload, process.env.JWTSECRETKEY, { expiresIn: process.env.EXPIRYTIME });
+    }
+
+     generateRandomPassword(length = 12) {
+        const upperCaseChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const lowerCaseChars = 'abcdefghijklmnopqrstuvwxyz';
+        const digits = '0123456789';
+        const specialChars = '!@#$%^&*()_+[]{}|;:,.<>?';
+        
+        const allChars = upperCaseChars + lowerCaseChars + digits + specialChars;
+        
+        let password = '';
+        
+        // Ensure the password contains at least one character from each set
+        password += upperCaseChars.charAt(Math.floor(Math.random() * upperCaseChars.length));
+        password += lowerCaseChars.charAt(Math.floor(Math.random() * lowerCaseChars.length));
+        password += digits.charAt(Math.floor(Math.random() * digits.length));
+        password += specialChars.charAt(Math.floor(Math.random() * specialChars.length));
+        
+        // Fill the rest of the password with random characters from all sets
+        for (let i = password.length; i < length; i++) {
+            password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+        }
+    
+        // Shuffle the password to ensure randomness
+        password = password.split('').sort(() => Math.random() - 0.5).join('');
+        
+        return password;
     }
 }
 

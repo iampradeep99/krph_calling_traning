@@ -17,11 +17,11 @@ const stateSchema = new mongoose.Schema({
   },
   regionCode: [{
     type: mongoose.Types.ObjectId,
-    ref: "Region", // An array of references to the Region model
+    ref: "Region", 
   }],
   country: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Country', // Reference to the Country model
+    ref: 'Country', 
     required: true,
   },
   insertDateTime: {

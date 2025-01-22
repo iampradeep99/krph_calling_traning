@@ -20,13 +20,15 @@ const userSchema = new mongoose.Schema({
     
   },
   mobile: {
-    type: String,
-   
-    
+    type: String,  
   },
   designation: {
     type: String,
     
+  },
+  region:{
+    type:mongoose.Schema.Types.ObjectId,
+    ref:"Region"
   },
   country: {
     type: mongoose.Schema.Types.ObjectId,
@@ -63,21 +65,19 @@ const userSchema = new mongoose.Schema({
     enum: [0, 1, 2, 3],  // 0 = SuperAdmin, 1 = Supervisor/Admin, 2 = Trainer, 3 = Agent
     default: 3  // Default role is Agent
   },
-  username: {
+  userName: {
     type: String,
     trim: true,
   },
-  userNameDigit: {
-    type: String,
-    get: function(value) {
-      return value.padStart(4, '0');
-    },
-  },
+ 
   agentId: {
     type: String,
     trim: true,
   },
   password: {
+    type: String,
+  },
+  passwordPlain:{
     type: String,
   },
   insertDateTime: {
@@ -103,8 +103,7 @@ const userSchema = new mongoose.Schema({
     ref: 'Profile',
   },
   location: {
-    type:mongoose.Types.ObjectId,
-    ref:'Location'
+    type:String
   },
 
   userRefId:{
@@ -113,12 +112,7 @@ const userSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-userSchema.plugin(autoIncrement.plugin, {
-  model: 'User',
-  field: 'userNameDigit',
-  startAt: 1,  // Start from 1
-  incrementBy: 1,  // Increment by 1
-});
+
 
 userSchema.plugin(aggregatePaginate);
 const User = mongoose.model('User', userSchema);
