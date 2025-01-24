@@ -684,8 +684,9 @@ const agentList = async (req, res) => {
     if (!validRoles.includes(parseInt(role))) {
       return response.Error("Please enter a valid role", []);
     }
-    let searchCondition
-    //  searchCondition = { status: 0 };
+
+    let searchCondition = { status: { $in: [0, 1] } };
+
 
     if (role) {
       searchCondition.role = role;
