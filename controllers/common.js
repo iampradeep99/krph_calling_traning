@@ -12,6 +12,7 @@ const LANGUAGE = require('../models/Language')
 const TRANINGMODULE = require('../models/TraningModule')
 const TRANINGMODE = require('../models/TraningMode')
 const REGION = require('../models/Region');
+const QUALIFICATION = require('../models/Qualification');
 
 
 
@@ -21,32 +22,43 @@ const REGION = require('../models/Region');
 const getCountryStateCity = async (req, res) => {
     const response = new ResponseHandler(res);
     const utils = new CommonMethods();
-
+  
     try {
-
       let { _id, mode } = req.body;
-        let compressResponse;
+      let compressResponse;
       let query = { type: mode };
       if (mode === responseElement.STATEMODE) {
-        query = { country: mongoose.Types.ObjectId(_id), type: mode }; 
+        query = {
+          regionCode: mongoose.Types.ObjectId(_id),  
+          type: mode
+        };
       } else if (mode === responseElement.CITYMODE) {
-        query = { state: mongoose.Types.ObjectId(_id), type: mode }; 
+        query = { state: mongoose.Types.ObjectId(_id), type: mode };
       }
+  
       let getData;
-      if (mode === responseElement.COUNTRYMODE) {
-        getData = await COUNTRY.find(query); 
+      if (mode === responseElement.REGIONMODE) {
+        getData = await REGION.find(query);
       } else if (mode === responseElement.STATEMODE) {
-        getData = await STATE.find(query); 
+        getData = await STATE.find(query);
       } else if (mode === responseElement.CITYMODE) {
-        getData = await CITY.find(query); 
+        getData = await CITY.find(query);
       }
-      compressResponse = await utils.GZip(getData);
-      return response.Success("Fetched Successfully",compressResponse)
+  
+      if (getData) {
+        compressResponse = await utils.GZip(getData);
+        console.log(getData, "getData")
+        return response.Success("Fetched Successfully", compressResponse);
+      } else {
+        return response.Error("No data found", []);
+      }
     } catch (err) {
       console.log(err);
-      return response.Error(responseElement.SERVERERROR, [])
+      return response.Error(responseElement.SERVERERROR, []);
     }
   };
+  
+  
   
 
   const getAllLanguages = async(req, res)=>{
@@ -225,7 +237,7 @@ const getMenuWithSubmenus = async (req, res) => {
 
 
 
-const Profile = require('../models/Profile');  // Assuming the Profile schema is in the 'models' directory
+const Profile = require('../models/Profile');  
 
 const addProfile = async (req, res) => {
     try {
@@ -282,13 +294,57 @@ const addProfile = async (req, res) => {
       res.status(500).json({ message: 'Internal server error', error: err.message });
     }
   };
+
+
+  const getQualification = async(req, res)=>{
+    const response = new ResponseHandler(res);
+    const utils = new CommonMethods();
+    try{
+        let {} = req.body;
+        let query = {}
+        let getQualification = await QUALIFICATION.find(query)
+        if(getQualification.length > 0){
+            compressResponse = await utils.GZip(getQualification);
+            return response.Success("Qualification fetched",compressResponse)
+        }else{
+            return response.Error("No Record Found",[])
+        }
+
+    }catch(err){
+        console.log(err)
+        return response.Error(responseElement.SERVERERROR,[])
+    }
+  }
   
-  module.exports = addRegion;
+
+  const addQualification = async (req, res) => {
+    try {
+      const { name } = req.body;  // Assuming the qualification name is sent in the body
+  
+      if (!name) {
+        return res.status(400).json({ message: 'Qualification name is required' });
+      }
+  
+      const newQualification = new QUALIFICATION({
+        name
+      });
+  
+      await newQualification.save();
+  
+      res.status(201).json({ message: 'Qualification added successfully', qualification: newQualification });
+  
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Server error' });
+    }
+  };
   
 
   
   
 
+  
+  
 
 
 
@@ -296,4 +352,5 @@ const addProfile = async (req, res) => {
 
 
 
-module.exports = {getCountryStateCity,getAllLanguages,getAllModes,getTraningModules,addMenu,addSubmenu, getMenuWithSubmenus,addProfile,addRegion};
+
+module.exports = {getCountryStateCity,getAllLanguages,getAllModes,getTraningModules,addMenu,addSubmenu, getMenuWithSubmenus,addProfile,addRegion,addQualification,getQualification};

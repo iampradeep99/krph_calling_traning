@@ -8,46 +8,39 @@ autoIncrement.initialize(mongoose.connection);
 const userSchema = new mongoose.Schema({
   firstName: {
     type: String,
-    required: true,
-    trim: true,
+    
   },
   lastName: {
     type: String,
-    required: true,
-    trim: true,
+    
   },
   email: {
     type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    lowercase: true,
+    
+    
   },
   mobile: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
+    type: String,  
   },
   designation: {
     type: String,
-    required: true,
-    trim: true,
+    
+  },
+  region:{
+    type:mongoose.Schema.Types.ObjectId,
+    ref:"Region"
   },
   country: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Country',
-    required: true,
   },
   state: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'State',
-    required: true,
   },
   city: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'City',
-    required: true,
   },
   gender: {
     type: Number,  
@@ -60,36 +53,32 @@ const userSchema = new mongoose.Schema({
     required: false,
   },
   qualification: {
-    type: String, 
-    required: false,
+  type:mongoose.Schema.Types.ObjectId,
+  ref:"Qualification"
   },
   experience: {
-    type: String, 
+    type: Number, 
     required: false,
   },
   role: {
     type: Number,  // Numeric role identifier
-    enum: [0, 1, 2, 3],  // 0 = SuperAdmin, 1 = Supervisor/Admin, 2 = Trainer, 3 = Agent
+    enum: [0, 1, 2, 3],  // 0 = SuperAdmin, 1 = Trainer/Admin, 2 = Supervisor, 3 = Agent
     default: 3  // Default role is Agent
   },
-  username: {
+  userName: {
     type: String,
     trim: true,
   },
-  userNameDigit: {
-    type: String,
-    unique: true,
-    get: function(value) {
-      return value.padStart(4, '0');
-    },
-  },
+ 
   agentId: {
     type: String,
     trim: true,
   },
   password: {
     type: String,
-    required: true,
+  },
+  passwordPlain:{
+    type: String,
   },
   insertDateTime: {
     type: Date,
@@ -114,22 +103,25 @@ const userSchema = new mongoose.Schema({
     ref: 'Profile',
   },
   location: {
-    type:mongoose.Types.ObjectId,
-    ref:'Location'
+    type:String
   },
 
   userRefId:{
     type:mongoose.Types.ObjectId,
     ref:"User"
+  },
+  adminId:{
+    type:mongoose.Schema.Types.ObjectId,
+    ref:"User"
+  },
+  supervisorId:{
+    type:mongoose.Schema.Types.ObjectId,
+    ref:"User"
   }
+  
 }, { timestamps: true });
 
-userSchema.plugin(autoIncrement.plugin, {
-  model: 'User',
-  field: 'userNameDigit',
-  startAt: 1,  // Start from 1
-  incrementBy: 1,  // Increment by 1
-});
+
 
 userSchema.plugin(aggregatePaginate);
 const User = mongoose.model('User', userSchema);

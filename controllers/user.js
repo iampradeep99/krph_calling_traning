@@ -7,6 +7,8 @@ const mongoose = require('mongoose');
 const { request } = require('../app');
 const STATE = require('../models/State');
 const { assignProfile } = require('./profile');
+const Mailer = require('../middlewares/sendMail');
+const templates = require('../templates/accountTemplate')
 
 
 // const createAgent = async (req, res) => {
@@ -75,127 +77,149 @@ const { assignProfile } = require('./profile');
 
 const createAgent = async (req, res) => {
   try {
-    const response = new ResponseHandler(res);
-    const { firstName, lastName, email, mobile, password, designation, country, state, city, gender, dob, qualification, experience, location, assignedProfile } = req.body;
-    const utils = new CommonMethods(firstName, 8);
-    let compressResponse;
+      const response = new ResponseHandler(res);
+      const mailer = new Mailer();
+      let newUserName;
+      const {
+          firstName,
+          lastName,
+          email,
+          mobile,
+          designation,
+          role,
+          region,
+          state,
+          city,
+          gender,
+          dob,
+          qualification,
+          experience,
+          location,
+          refId
+      } = req.body;
+      const utils = new CommonMethods(firstName, 8);
+      if (role == 3) {
+          let getLastRecord = await User.find({
+                  role: 3
+              })
+              .sort({
+                  createdAt: -1
+              })
+              .limit(1);
 
-    // Check if email is already registered
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      compressResponse = await utils.GZip([]);
-      return response.Success("Email is already registered", compressResponse);
-    }
+          if (getLastRecord.length > 0) {
+              const lastUserName = getLastRecord[0].userName;
+              const lastNumber = parseInt(lastUserName.split('-')[1], 10);
+              const newNumber = lastNumber + 1;
+              newUserName = `AGT-${newNumber.toString().padStart(4, '0')}`;
+          }
+      }
 
-    // Check if mobile is already registered
-    const existingMobile = await User.findOne({ mobile });
-    if (existingMobile) {
-      compressResponse = await utils.GZip([]);
-      return response.Success("Mobile number is already registered", compressResponse);
-    }
-    const userName = utils.generateRandomAlphanumeric();
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-    const agent = new User({
-      firstName,
-      lastName,
-      email,
-      mobile,
-      password: hashedPassword,
-      designation,
-      country,
-      state,
-      city,
-      gender,
-      dob,
-      qualification,
-      experience,
-      username: firstName.toUpperCase(),
-      location,
-      assignedProfile,
-      status: 0, 
-    });
+      const existingUser = await User.findOne({
+          email
+      });
+      if (existingUser) {
+          let compressResponse = await utils.GZip([]);
+          return response.Success("Email is already registered", compressResponse);
+      }
 
-    let savedInfo = await agent.save();
-    if (savedInfo) {
-      await User.findOneAndUpdate(
-        { _id: mongoose.Types.ObjectId(savedInfo._id) },
-        { $set: { uniqueUserName: `${savedInfo.username}-${savedInfo.userNameDigit}`, agentId: `AGT-${savedInfo.userNameDigit}` } },
-        { new: true }
-      );
-    }
+      const existingMobile = await User.findOne({
+          mobile
+      });
+      if (existingMobile) {
+          let compressResponse = await utils.GZip([]);
+          return response.Success("Mobile number is already registered", compressResponse);
+      }
 
-    const agentResponse = {
-      firstName: agent.firstName,
-      lastName: agent.lastName,
-      email: agent.email,
-      mobile: agent.mobile,
-      designation: agent.designation,
-      country: agent.country,
-      state: agent.state,
-      city: agent.city,
-      gender: agent.gender,
-      dob: agent.dob,
-      qualification: agent.qualification,
-      experience: agent.experience,
-      username: agent.username,
-      status: agent.status,
-      location: agent.location,
-      assignedProfile: agent.assignedProfile
-    };
-    compressResponse = await utils.GZip(agentResponse);
-    return response.Success(responseElement.AGENTADD, compressResponse);
+      let newPassword = utils.generateRandomPassword(8);
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+      const agent = new User({
+          firstName,
+          lastName,
+          email,
+          mobile,
+          password: hashedPassword,
+          designation,
+          region,
+          state,
+          city,
+          gender,
+          dob,
+          qualification,
+          experience,
+          location,
+          status: 0,
+          userName: newUserName,
+          role: role,
+          userRefId: refId,
+          passwordPlain: newPassword
+      });
+
+      let savedInfo = await agent.save();
+      if(savedInfo){
+        const to = savedInfo.email;
+        const subject = 'CSC Agent Training';
+        const text = '';
+        const html = await templates.accountDetails(savedInfo.email,newPassword,savedInfo.firstName,"http://45.250.3.34/" )
+        await mailer.sendMail(to, subject, text, html);
+        console.log('Email sent successfully');
+  
+       }
+
+      const agentResponse = {
+          firstName: agent.firstName,
+          lastName: agent.lastName,
+          email: agent.email,
+          mobile: agent.mobile,
+          designation: agent.designation,
+          region: agent.region,
+          state: agent.state,
+          city: agent.city,
+          gender: agent.gender,
+          dob: agent.dob,
+          qualification: agent.qualification,
+          experience: agent.experience,
+          status: agent.status,
+          location: agent.location,
+          assignedProfile: agent.assignedProfile
+      };
+
+      let compressResponse = await utils.GZip(agentResponse);
+      return response.Success(responseElement.AGENTADD, compressResponse);
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error, could not create agent' });
+      console.error(err);
+      res.status(500).json({
+          message: 'Server error, could not create agent'
+      });
   }
 };
 
-
 const updateAgent = async (req, res) => {
   const response = new ResponseHandler(res);
-  const { agentId, firstName, lastName, email, mobile, password, designation, country, state, city, gender, dob, qualification, experience, location, assignedProfile } = req.body;
+  const { 
+    agentId, firstName, lastName, mobile, designation, region,  // Changed 'country' to 'region'
+    state, city, gender, dob, qualification, experience, location, assignedProfile 
+  } = req.body;
+  
   const utils = new CommonMethods(firstName, 8);
   let compressResponse;
 
   try {
     const agent = await User.findById(agentId);
     if (!agent) {
-      compressResponse = await utils.GZip([]);
+      compressResponse = await utils.GZip({ message: 'Agent not found' });
       return response.Success("Agent not found", compressResponse);
     }
 
-    if (email && email !== agent.email) {
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        compressResponse = await utils.GZip([]);
-        return response.Success("Email is already registered", compressResponse);
-      }
-    }
-
-    // Check if mobile is being changed and if it's already registered
-    if (mobile && mobile !== agent.mobile) {
-      const existingMobile = await User.findOne({ mobile, _id: { $ne: agentId } });
-      if (existingMobile) {
-        compressResponse = await utils.GZip([]);
-        return response.Success("Mobile number is already registered", compressResponse);
-      }
-    }
-
-    if (password) {
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-      agent.password = hashedPassword;
-    }
-
-    // Update agent information with provided fields or keep existing ones
+    // Assigning values with fallback to existing agent data
     agent.firstName = firstName || agent.firstName;
     agent.lastName = lastName || agent.lastName;
-    agent.email = email || agent.email;  // Email is only updated if a new one is provided
     agent.mobile = mobile || agent.mobile;
     agent.designation = designation || agent.designation;
-    agent.country = country || agent.country;
+    agent.region = region || agent.region;  // Using 'region' instead of 'country'
     agent.state = state || agent.state;
     agent.city = city || agent.city;
     agent.gender = gender || agent.gender;
@@ -203,7 +227,7 @@ const updateAgent = async (req, res) => {
     agent.qualification = qualification || agent.qualification;
     agent.experience = experience || agent.experience;
     agent.location = location || agent.location;
-    agent.assignedProfile = assignedProfile || agent.assignedProfile;
+    agent.assignedProfile = assignedProfile || agent.assignedProfile; // Add assignedProfile if provided
 
     let savedInfo = await agent.save();
 
@@ -213,7 +237,7 @@ const updateAgent = async (req, res) => {
       email: agent.email,
       mobile: agent.mobile,
       designation: agent.designation,
-      country: agent.country,
+      region: agent.region,  // Make sure region is included in the response
       state: agent.state,
       city: agent.city,
       gender: agent.gender,
@@ -231,40 +255,319 @@ const updateAgent = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    compressResponse = await utils.GZip([]);
+    compressResponse = await utils.GZip({ message: 'Server error, could not update agent' });
     return response.Error('Server error, could not update agent', compressResponse);
   }
 };
 
 
 
+const addUpdateAdminOrTrainer = async (req, res) => {
+  const response = new ResponseHandler(res);
+  const { generateRandomPassword } = new CommonMethods();
+  const mailer = new Mailer();
+  const utils = new CommonMethods();
+  try {
+    const { userId: addedBy } = req.user;
+    const { _id,email, mobile } = req.body;
+    let compressResponse;
 
-const agentList = async (req, res) => {
+    const [isEmailExist, isMobileExist] = await Promise.all([
+      User.findOne({ email }),
+      User.findOne({ mobile })
+    ]);
+
+    if (isEmailExist) {
+      compressResponse = await utils.GZip([]);
+      return response.Error("Email already exists", compressResponse);
+    }
+    if (isMobileExist) {
+      compressResponse = await utils.GZip([]);
+      return response.Error("Mobile number already exists", compressResponse);
+    }
+
+    if (_id) {
+      const existingUser = await User.findById(_id);
+      if (!existingUser) {
+        compressResponse = await utils.GZip([]);
+        return response.Error("User not found", compressResponse);
+      }
+      let updatedData = await User.findByIdAndUpdate(_id, req.body, { new: true });
+      compressResponse = await utils.GZip([updatedData]);
+      
+      return response.Success("Admin/trainer Updated Successfully", compressResponse);
+    } else {
+      const newPassword = generateRandomPassword(8);
+      const hashedPassword = await bcrypt.hash(newPassword, await bcrypt.genSalt(10));
+
+      const newUser = new User({
+        ...req.body,
+        password: hashedPassword,
+        passwordPlain: newPassword,
+        userRefId: addedBy
+      });
+     let addedUser =  await newUser.save();
+     compressResponse = await utils.GZip([addedUser]);
+     if(addedUser){
+      const to = addedUser.email;
+      const subject = 'CSC Agent Training';
+      const text = '';
+      const html = await templates.accountDetails(addedUser.email,newPassword,addedUser.firstName,"http://45.250.3.34/" )
+      await mailer.sendMail(to, subject, text, html);
+      console.log('Email sent successfully');
+
+     }
+
+      return response.Success("Admin/Trainer Added Successfully", compressResponse, { password: newPassword });
+    }
+  } catch (err) {
+    console.error("Error in addUpdateAdminOrTrainer:", err);
+    return response.Error("Server error", []);
+  }
+};
+
+
+const addUpdateSupervisor = async (req, res) => {
+  const response = new ResponseHandler(res);
+  const { generateRandomPassword } = new CommonMethods();
+  const mailer = new Mailer();
+  const utils = new CommonMethods();
+  try {
+    const { userId: addedBy } = req.user; 
+    const { _id, email, mobile,adminId } = req.body;
+    let compressResponse;
+
+    console.log(req.body);
+
+    const [isEmailExist, isMobileExist] = await Promise.all([
+      User.findOne({ email }),
+      User.findOne({ mobile })
+    ]);
+
+    if (isEmailExist) {
+      compressResponse = await utils.GZip([]);
+      return response.Error("Email already exists", compressResponse);
+    }
+    if (isMobileExist) {
+      compressResponse = await utils.GZip([]);
+      return response.Error("Mobile number already exists", compressResponse);
+    }
+
+    if (_id) {
+      const existingUser = await User.findById(_id);
+      if (!existingUser) {
+        compressResponse = await utils.GZip([]);
+        return response.Error("User not found", compressResponse);
+      }
+      let updatedData = await User.findByIdAndUpdate(_id, { ...req.body, adminId }, { new: true });
+      compressResponse = await utils.GZip([updatedData]);
+
+      return response.Success("Supervisor Updated Successfully", compressResponse);
+    } else {
+      const newPassword = generateRandomPassword(8);
+      const hashedPassword = await bcrypt.hash(newPassword, await bcrypt.genSalt(10));
+
+      const newUser = new User({
+        ...req.body,
+        password: hashedPassword,
+        passwordPlain: newPassword,
+        userRefId: addedBy,
+        adminId,
+      });
+
+      let addedUser = await newUser.save();
+      compressResponse = await utils.GZip([addedUser]);
+
+      if (addedUser) {
+        const to = addedUser.email;
+        const subject = 'CSC Agent Training';
+        const text = '';
+        const html = await templates.accountDetails(addedUser.email, newPassword, addedUser.firstName, "http://45.250.3.34/" );
+        await mailer.sendMail(to, subject, text, html);
+        console.log('Email sent successfully');
+      }
+
+      return response.Success("Supervisor Added Successfully", compressResponse, { password: newPassword });
+    }
+  } catch (err) {
+    console.error("Error in addUpdateAdminOrTrainer:", err);
+    return response.Error("Server error", []);
+  }
+};
+
+
+
+
+
+
+
+// const agentList = async (req, res) => {
+//   const response = new ResponseHandler(res);
+//   const utils = new CommonMethods();
+//   try {
+//     const { page = 1, limit = 10, searchQuery = '', role, adminId, supervisorId } = req.body;
+//     if(!role){
+//       return response.Error("Role is required", [])
+//     }
+//     const validRoles = [0, 1, 2, 3];
+//     if (!validRoles.includes(parseInt(role))) {
+//       return response.Error("Please enter a valid role", []);
+//     }
+//     let searchCondition = { status: 0 }; 
+    
+//     if (role) {
+//       searchCondition.role = role;
+//     }
+
+//     if (searchQuery) {
+//       searchCondition.$or = [
+//         { firstName: { $regex: searchQuery, $options: 'i' } },
+//         { lastName: { $regex: searchQuery, $options: 'i' } },
+//         { userName: { $regex: searchQuery, $options: 'i' } },
+//       ];
+//     }
+
+//     let query = [
+//       { $match: searchCondition },
+//       { 
+//         $sort: { 
+//           createdAt: -1, 
+//           email: 1,       
+//           mobile: 1,      
+//           userName: 1 
+//         }
+//       },
+//       {
+//         $lookup: {
+//           from: 'regions',  
+//           localField: 'region',  
+//           foreignField: '_id',  
+//           as: 'region', 
+//         }
+//       },
+//       {
+//         $unwind: {
+//           path: '$region',
+//           preserveNullAndEmptyArrays: true,
+//         }
+//       },
+//       {
+//         $lookup: {
+//           from: 'states',  
+//           localField: 'state',  
+//           foreignField: '_id',  
+//           as: 'state', 
+//         }
+//       },
+//       {
+//         $unwind: {
+//           path: '$state',
+//           preserveNullAndEmptyArrays: true,
+//         }
+//       },
+//       {
+//         $lookup: {
+//           from: 'cities',  
+//           localField: 'city',  
+//           foreignField: '_id',  
+//           as: 'city', 
+//         }
+//       },
+//       {
+//         $unwind: {
+//           path: '$city',
+//           preserveNullAndEmptyArrays: true,
+//         }
+//       },
+//       {
+//         $project: {
+//           firstName: 1,
+//           lastName: 1,
+//           email: 1,
+//           mobile: 1,
+//           designation: 1,
+//           region: {
+//             name: "$region.name",
+//             _id: "$region._id",
+//           },
+//           state: {
+//             name: "$state.name",
+//             _id: "$state._id",
+//             code: "$state.stateCode"
+//           },
+//           city: {
+//             name: "$city.name",
+//             _id: "$city._id",
+//             code: "$city.cityCode"
+//           },
+//           userName: 1,
+//           role: 1
+//         }
+//       }
+//     ];
+
+//     const options = {
+//       page,
+//       limit,
+//       customLabels: { totalDocs: 'total', docs: 'agents' },
+//     };
+
+//     const myAggregate = User.aggregate(query);
+//     const getData = await User.aggregatePaginate(myAggregate, options);
+
+//     if (getData && getData.agents.length > 0) {
+//       const compressResponse = await utils.GZip(getData);
+//       response.Success(responseElement.AGENTFETCHED, compressResponse);
+//     } else {
+//       response.Success(responseElement.NO_AGENTS_FOUND, []);
+//     }
+
+//   } catch (err) {
+//     return response.Error(responseElement.INTERNAL_ERROR, err.message);
+//   }
+// };
+
+
+const agentListWorking = async (req, res) => {
   const response = new ResponseHandler(res);
   const utils = new CommonMethods();
   try {
-    const { page = 1, limit = 10, searchQuery = '', role } = req.body;
-    if(!role){
-      return response.Error("Role is required", [])
+    const { page = 1, limit = 10, searchQuery = '', role, adminId, supervisorId } = req.body;
+    console.log(req.body, "tes")
+    if (!role) {
+      return response.Error("Role is required", []);
     }
+
     const validRoles = [0, 1, 2, 3];
     if (!validRoles.includes(parseInt(role))) {
       return response.Error("Please enter a valid role", []);
     }
-    let searchCondition = { status: 0 }; 
-    
+
+    let searchCondition = { status: 0 };
+
     if (role) {
       searchCondition.role = role;
+    }
+
+    
+    if (adminId) {
+      searchCondition.adminId = mongoose.Types.ObjectId(adminId);
+    }
+
+    
+    if (supervisorId) {
+      searchCondition.supervisorId = mongoose.Types.ObjectId(supervisorId);
     }
 
     if (searchQuery) {
       searchCondition.$or = [
         { firstName: { $regex: searchQuery, $options: 'i' } },
         { lastName: { $regex: searchQuery, $options: 'i' } },
-        { uniqueUserName: { $regex: searchQuery, $options: 'i' } },
+        { userName: { $regex: searchQuery, $options: 'i' } },
       ];
     }
 
+    console.log(searchCondition, "searchQuery")
     let query = [
       { $match: searchCondition },
       { 
@@ -272,29 +575,30 @@ const agentList = async (req, res) => {
           createdAt: -1, 
           email: 1,       
           mobile: 1,      
-          uniqueUserName: 1 
+          userName: 1 ,
+          status:1
         }
       },
       {
         $lookup: {
-          from: 'countries',  
-          localField: 'country',  
-          foreignField: '_id',  
-          as: 'country', 
+          from: 'regions',
+          localField: 'region',
+          foreignField: '_id',
+          as: 'region',
         }
       },
       {
         $unwind: {
-          path: '$country',
+          path: '$region',
           preserveNullAndEmptyArrays: true,
         }
       },
       {
         $lookup: {
-          from: 'states',  
-          localField: 'state',  
-          foreignField: '_id',  
-          as: 'state', 
+          from: 'states',
+          localField: 'state',
+          foreignField: '_id',
+          as: 'state',
         }
       },
       {
@@ -305,10 +609,10 @@ const agentList = async (req, res) => {
       },
       {
         $lookup: {
-          from: 'cities',  
-          localField: 'city',  
-          foreignField: '_id',  
-          as: 'city', 
+          from: 'cities',
+          localField: 'city',
+          foreignField: '_id',
+          as: 'city',
         }
       },
       {
@@ -324,10 +628,10 @@ const agentList = async (req, res) => {
           email: 1,
           mobile: 1,
           designation: 1,
-          country: {
-            name: "$country.name",
-            _id: "$country._id",
-            code: "$country.countryCode"
+          status:1,
+          region: {
+            name: "$region.name",
+            _id: "$region._id",
           },
           state: {
             name: "$state.name",
@@ -339,7 +643,7 @@ const agentList = async (req, res) => {
             _id: "$city._id",
             code: "$city.cityCode"
           },
-          uniqueUserName: 1,
+          userName: 1,
           role: 1
         }
       }
@@ -365,6 +669,149 @@ const agentList = async (req, res) => {
     return response.Error(responseElement.INTERNAL_ERROR, err.message);
   }
 };
+
+const agentList = async (req, res) => {
+  const response = new ResponseHandler(res);
+  const utils = new CommonMethods();
+  try {
+    const { page = 1, limit = 10, searchQuery = '', role, adminId, supervisorId } = req.body;
+    console.log(req.body, "tes");
+    if (!role) {
+      return response.Error("Role is required", []);
+    }
+
+    const validRoles = [0, 1, 2, 3];
+    if (!validRoles.includes(parseInt(role))) {
+      return response.Error("Please enter a valid role", []);
+    }
+
+    let searchCondition = { status: 0 };
+
+    if (role) {
+      searchCondition.role = role;
+    }
+
+    if (adminId) {
+      searchCondition.adminId = mongoose.Types.ObjectId(adminId);
+    }
+
+    if (supervisorId) {
+      searchCondition.supervisorId = mongoose.Types.ObjectId(supervisorId);
+    }
+
+    if (searchQuery) {
+      searchCondition.$or = [
+        { firstName: { $regex: searchQuery, $options: 'i' } },
+        { lastName: { $regex: searchQuery, $options: 'i' } },
+        { userName: { $regex: searchQuery, $options: 'i' } },
+      ];
+    }
+
+    console.log(searchCondition, "searchQuery");
+    let query = [
+      { $match: searchCondition },
+      { 
+        $sort: { 
+          createdAt: -1, 
+          email: 1,       
+          mobile: 1,      
+          userName: 1 ,
+          status: 1
+        }
+      },
+      {
+        $lookup: {
+          from: 'regions',
+          localField: 'region',
+          foreignField: '_id',
+          as: 'region',
+        }
+      },
+      {
+        $unwind: {
+          path: '$region',
+          preserveNullAndEmptyArrays: true,
+        }
+      },
+      {
+        $lookup: {
+          from: 'states',
+          localField: 'state',
+          foreignField: '_id',
+          as: 'state',
+        }
+      },
+      {
+        $unwind: {
+          path: '$state',
+          preserveNullAndEmptyArrays: true,
+        }
+      },
+      {
+        $lookup: {
+          from: 'cities',
+          localField: 'city',
+          foreignField: '_id',
+          as: 'city',
+        }
+      },
+      {
+        $unwind: {
+          path: '$city',
+          preserveNullAndEmptyArrays: true,
+        }
+      },
+      {
+        $project: {
+          firstName: 1,
+          lastName: 1,
+          email: 1,
+          mobile: 1,
+          designation: 1,
+          status: 1,  // Ensure the status field is included
+          region: {
+            name: "$region.name",
+            _id: "$region._id",
+          },
+          state: {
+            name: "$state.name",
+            _id: "$state._id",
+            code: "$state.stateCode"
+          },
+          city: {
+            name: "$city.name",
+            _id: "$city._id",
+            code: "$city.cityCode"
+          },
+          userName: 1,
+          role: 1
+        }
+      }
+    ];
+
+    const options = {
+      page,
+      limit,
+      customLabels: { totalDocs: 'total', docs: 'agents' },
+    };
+
+    const myAggregate = User.aggregate(query);
+    const getData = await User.aggregatePaginate(myAggregate, options);
+
+    if (getData && getData.agents.length > 0) {
+      const compressResponse = await utils.GZip(getData);
+      response.Success(responseElement.AGENTFETCHED, compressResponse);
+    } else {
+      response.Success(responseElement.NO_AGENTS_FOUND, []);
+    }
+
+  } catch (err) {
+    return response.Error(responseElement.INTERNAL_ERROR, err.message);
+  }
+};
+
+
+
 
 
 
@@ -598,7 +1045,7 @@ const getUserById = async (req, res) => {
                 mobile: 1,
                 designation: 1,
                 status: 1,
-                uniqueUserName: 1,
+                userName: 1,
                 assignedProfile: 1,
               },
             },
@@ -606,22 +1053,22 @@ const getUserById = async (req, res) => {
           country: [
             {
               $lookup: {
-                from: "countries",
-                localField: "country",
+                from: "regions",
+                localField: "region",
                 foreignField: "_id",
-                as: "country",
+                as: "region",
               },
             },
             {
               $unwind: {
-                path: "$country",
+                path: "$region",
                 preserveNullAndEmptyArrays: true,
               },
             },
             {
               $project: {
-                _id: "$country._id",
-                name: "$country.name",
+                _id: "$region._id",
+                name: "$region.name",
               },
             },
           ],
@@ -679,7 +1126,7 @@ const getUserById = async (req, res) => {
           mobile: { $arrayElemAt: ["$user.mobile", 0] },
           designation: { $arrayElemAt: ["$user.designation", 0] },
           status: { $arrayElemAt: ["$user.status", 0] },
-          uniqueUserName: { $arrayElemAt: ["$user.uniqueUserName", 0] },
+          userName: { $arrayElemAt: ["$user.userName", 0] },
           country: { $arrayElemAt: ["$country", 0] },
           state: { $arrayElemAt: ["$state", 0] },
           city: { $arrayElemAt: ["$city", 0] },
@@ -716,7 +1163,7 @@ const getUserById = async (req, res) => {
         mobile: 1,
         designation:1,
         status:1,
-        uniqueUserName:1,
+        userName:1,
         country:1,
         state: 1,
         city: 1,
@@ -739,6 +1186,45 @@ const getUserById = async (req, res) => {
   }
 };
 
+const statusUpdate = async (req, res) => {
+  const response = new ResponseHandler(res);
+  const utils = new CommonMethods();
+  try {
+    let { agentId, status } = req.body;
+
+    if (!agentId) {
+      return response.Error("User Id is required", []);
+    }
+    if (!status) {
+      return response.Error("Status is required", []);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(agentId)) {
+      return response.Error("Invalid User Id", []);
+    }
+    let updatedUser = await User.findOneAndUpdate(
+      { _id: mongoose.Types.ObjectId(agentId) },
+      { $set: { status } },
+      { new: true } 
+    );
+
+    if (updatedUser) {
+      const compressResponse = await utils.GZip(updatedUser);
+      
+      if (compressResponse) {
+        return response.Success("Status updated successfully", compressResponse);
+      } else {
+        return response.Error("Compression failed", []);
+      }
+    } else {
+      return response.Error("No user found with the given UserId", []);
+    }
+
+  } catch (err) {
+    console.error("Error updating status:", err); 
+    return response.Error(responseElement.SERVERERROR, []);
+  }
+};
 
 
 
@@ -752,4 +1238,6 @@ const getUserById = async (req, res) => {
 
 
 
-module.exports = { createAgent,updateAgent,agentList,disableAgent, getUserById};
+
+
+module.exports = { createAgent,updateAgent,agentList,disableAgent, getUserById,addUpdateAdminOrTrainer,addUpdateSupervisor,statusUpdate};

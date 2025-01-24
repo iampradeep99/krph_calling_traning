@@ -10,12 +10,15 @@ router.post('/getCountryStateCity', authenticate.verifyToken,COMMONCONTROLLER.ge
 router.post('/getLanguage', authenticate.verifyToken,COMMONCONTROLLER.getAllLanguages )
 router.post('/getTraningModes', authenticate.verifyToken,COMMONCONTROLLER.getAllModes )
 router.post('/getTraningModules', authenticate.verifyToken,COMMONCONTROLLER.getTraningModules )
+router.post('/getQualification', authenticate.verifyToken,COMMONCONTROLLER.getQualification )
 
 router.post('/addMenu', COMMONCONTROLLER.addMenu)
 router.post('/addSubmenu', COMMONCONTROLLER.addSubmenu)
 router.post('/getMenu', COMMONCONTROLLER.getMenuWithSubmenus)
 router.post('/addProfile', COMMONCONTROLLER.addProfile)
 router.post('/addRegion', COMMONCONTROLLER.addRegion)
+router.post('/addQualification', COMMONCONTROLLER.addQualification)
+
 
 
 
