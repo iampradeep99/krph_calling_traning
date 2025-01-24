@@ -27,6 +27,9 @@ const profileSchema = new mongoose.Schema({
     type: Boolean,
     default: true,  // Default status is active
   },
+  profileId:{
+    type:Number
+  },
   menuPermission: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Menu',  // Assuming you have a 'Menu' model
