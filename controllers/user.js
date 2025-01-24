@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Profile = require('../models/Profile');
 const ResponseHandler = require('../constant/common');
 const CommonMethods = require("../utils/utilities");
 const bcrypt = require('bcryptjs');
@@ -95,7 +96,9 @@ const createAgent = async (req, res) => {
           qualification,
           experience,
           location,
-          refId
+          refId,
+          admin,
+          supervisor
       } = req.body;
       const utils = new CommonMethods(firstName, 8);
       if (role == 3) {
@@ -120,7 +123,7 @@ const createAgent = async (req, res) => {
       });
       if (existingUser) {
           let compressResponse = await utils.GZip([]);
-          return response.Success("Email is already registered", compressResponse);
+          return response.Error("Email is already registered", compressResponse);
       }
 
       const existingMobile = await User.findOne({
@@ -128,12 +131,14 @@ const createAgent = async (req, res) => {
       });
       if (existingMobile) {
           let compressResponse = await utils.GZip([]);
-          return response.Success("Mobile number is already registered", compressResponse);
+          return response.Error("Mobile number is already registered", compressResponse);
       }
 
       let newPassword = utils.generateRandomPassword(8);
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(newPassword, salt);
+      let profile = await Profile.findOne({profileId:1004})
+      
 
       const agent = new User({
           firstName,
@@ -154,7 +159,10 @@ const createAgent = async (req, res) => {
           userName: newUserName,
           role: role,
           userRefId: refId,
-          passwordPlain: newPassword
+          passwordPlain: newPassword,
+          adminId:admin,
+          supervisorId:supervisor,
+          assignedProfile:profile._id
       });
 
       let savedInfo = await agent.save();
@@ -1048,6 +1056,15 @@ const getUserById = async (req, res) => {
                 status: 1,
                 userName: 1,
                 assignedProfile: 1,
+                gender:1,
+                dob:1,
+                qualification:1,
+                experience:1,
+                location:1,
+                status:1,
+                adminId:1,
+                supervisorId:1
+
               },
             },
           ],
@@ -1132,6 +1149,14 @@ const getUserById = async (req, res) => {
           state: { $arrayElemAt: ["$state", 0] },
           city: { $arrayElemAt: ["$city", 0] },
           assignedProfile: { $arrayElemAt: ["$user.assignedProfile", 0] },
+          gender:{ $arrayElemAt: ["$user.gender", 0] },
+          dob:{ $arrayElemAt: ["$user.dob", 0] },
+          qualification:{ $arrayElemAt: ["$user.qualification", 0] },
+          experience:{ $arrayElemAt: ["$user.experience", 0] },
+          location:{ $arrayElemAt: ["$user.location", 0] },
+          status:{ $arrayElemAt: ["$user.status", 0] },
+          adminId:{ $arrayElemAt: ["$user.adminId", 0] },
+                supervisorId:{ $arrayElemAt: ["$user.supervisorId", 0] },
         },
       },
       {
@@ -1169,6 +1194,14 @@ const getUserById = async (req, res) => {
         state: 1,
         city: 1,
         assignedProfile: 1,
+        gender:1,
+        dob:1,
+        qualification:1,
+        experience:1,
+        location:1,
+        status:1,
+        adminId:1,
+        supervisorId:1
       }
      }
        
