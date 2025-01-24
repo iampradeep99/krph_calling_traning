@@ -109,7 +109,16 @@ const userSchema = new mongoose.Schema({
   userRefId:{
     type:mongoose.Types.ObjectId,
     ref:"User"
+  },
+  adminId:{
+    type:mongoose.Schema.Types.ObjectId,
+    ref:"User"
+  },
+  supervisorId:{
+    type:mongoose.Schema.Types.ObjectId,
+    ref:"User"
   }
+  
 }, { timestamps: true });
 
 

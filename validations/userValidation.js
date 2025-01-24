@@ -101,7 +101,14 @@ const validateAdminOrTrainerData = (req, res, next) => {
       'any.required': 'Date of Birth is required',
       'date.base': 'Invalid Date of Birth format',
     }),
+    location: Joi.string().required().messages({
+      'any.required': 'Location is required',
+    }),
     _id: Joi.string().optional(), // _id is optional for new users
+
+    adminId: Joi.string().required().messages({
+      'any.required': 'Admin ID is required',
+    }),
   });
 
   // Validate the request body using Joi

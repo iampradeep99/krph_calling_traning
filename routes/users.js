@@ -10,8 +10,12 @@ router.post('/update',authenticate.verifyToken,agentValidation.validateAgentData
 router.post('/allAgent',authenticate.verifyToken,  USER.agentList);
 router.put('/status',authenticate.verifyToken,  USER.disableAgent);
 router.post('/getById',authenticate.verifyToken,  USER.getUserById);
+router.post('/statusUpdate',authenticate.verifyToken,  USER.statusUpdate);
+
 
 router.post('/addUpdateTrainerOrAdmin',authenticate.verifyToken, agentValidation.validateAdminOrTrainerData,  USER.addUpdateAdminOrTrainer);
+router.post('/addUpdateSupervisor',authenticate.verifyToken, agentValidation.validateAdminOrTrainerData,  USER.addUpdateSupervisor);
+
 
 
 
