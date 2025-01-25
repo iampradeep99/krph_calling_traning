@@ -678,36 +678,201 @@ const agentListWorking = async (req, res) => {
   }
 };
 
+// const agentList = async (req, res) => {
+//   const response = new ResponseHandler(res);
+//   const utils = new CommonMethods();
+//   try {
+//      let currentUser = await User.findOne({_id:req.user.userId});
+     
+//     const { page = 1, limit = 10, searchQuery = '', role, adminId, supervisorId } = req.body;
+//     if (!role) {
+//       return response.Error("Role is required", []);
+//     }
+
+//     const validRoles = [0, 1, 2, 3];
+//     if (!validRoles.includes(parseInt(role))) {
+//       return response.Error("Please enter a valid role", []);
+//     }
+
+//     let searchCondition = { status: { $in: [0, 1] } };
+
+
+//     if (role) {
+//       searchCondition.role = role;
+//     }
+
+//     if (adminId) {
+//       searchCondition.adminId = mongoose.Types.ObjectId(adminId);
+//     }
+
+//     if (supervisorId) {
+//       searchCondition.supervisorId = mongoose.Types.ObjectId(supervisorId);
+//     }
+
+//     if (searchQuery) {
+//       searchCondition.$or = [
+//         { firstName: { $regex: searchQuery, $options: 'i' } },
+//         { lastName: { $regex: searchQuery, $options: 'i' } },
+//         { userName: { $regex: searchQuery, $options: 'i' } },
+//       ];
+//     }
+
+//     console.log(searchCondition, "searchQuery");
+//     let query = [
+//       { $match: searchCondition },
+//       { 
+//         $sort: { 
+//           createdAt: -1, 
+//           email: 1,       
+//           mobile: 1,      
+//           userName: 1 ,
+//           status: 1
+//         }
+//       },
+//       {
+//         $lookup: {
+//           from: 'regions',
+//           localField: 'region',
+//           foreignField: '_id',
+//           as: 'region',
+//         }
+//       },
+//       {
+//         $unwind: {
+//           path: '$region',
+//           preserveNullAndEmptyArrays: true,
+//         }
+//       },
+//       {
+//         $lookup: {
+//           from: 'states',
+//           localField: 'state',
+//           foreignField: '_id',
+//           as: 'state',
+//         }
+//       },
+//       {
+//         $unwind: {
+//           path: '$state',
+//           preserveNullAndEmptyArrays: true,
+//         }
+//       },
+//       {
+//         $lookup: {
+//           from: 'cities',
+//           localField: 'city',
+//           foreignField: '_id',
+//           as: 'city',
+//         }
+//       },
+//       {
+//         $unwind: {
+//           path: '$city',
+//           preserveNullAndEmptyArrays: true,
+//         }
+//       },
+//       {
+//         $project: {
+//           firstName: 1,
+//           lastName: 1,
+//           email: 1,
+//           mobile: 1,
+//           designation: 1,
+//           status: 1,  // Ensure the status field is included
+//           region: {
+//             name: "$region.name",
+//             _id: "$region._id",
+//           },
+//           state: {
+//             name: "$state.name",
+//             _id: "$state._id",
+//             code: "$state.stateCode"
+//           },
+//           city: {
+//             name: "$city.name",
+//             _id: "$city._id",
+//             code: "$city.cityCode"
+//           },
+//           userName: 1,
+//           role: 1
+//         }
+//       }
+//     ];
+
+//     const options = {
+//       page,
+//       limit,
+//       customLabels: { totalDocs: 'total', docs: 'agents' },
+//     };
+
+//     const myAggregate = User.aggregate(query);
+//     const getData = await User.aggregatePaginate(myAggregate, options);
+
+//     if (getData && getData.agents.length > 0) {
+//       const compressResponse = await utils.GZip(getData);
+//       response.Success(responseElement.AGENTFETCHED, compressResponse);
+//     } else {
+//       response.Success(responseElement.NO_AGENTS_FOUND, []);
+//     }
+
+//   } catch (err) {
+//     return response.Error(responseElement.INTERNAL_ERROR, err.message);
+//   }
+// };
+
+
 const agentList = async (req, res) => {
   const response = new ResponseHandler(res);
   const utils = new CommonMethods();
   try {
-    const { page = 1, limit = 10, searchQuery = '', role, adminId, supervisorId } = req.body;
-    console.log(req.body, "tes");
-    if (!role) {
-      return response.Error("Role is required", []);
+    // Fetch current user
+    let currentUser = await User.findOne({ _id: req.user.userId });
+
+    // If user is not found, return a specific error message
+    if (!currentUser) {
+      return response.Error("User not found. Please ensure you are logged in with a valid user.", []);
     }
 
+    const { page = 1, limit = 10, searchQuery = '', role, adminId, supervisorId } = req.body;
+    console.log(req.body);
+
+    // Validate 'role' field
+    if (!role) {
+      return response.Error("Role is required. Please provide a valid role.", []);
+    }
+
+    // Validate that the provided role is valid
     const validRoles = [0, 1, 2, 3];
     if (!validRoles.includes(parseInt(role))) {
-      return response.Error("Please enter a valid role", []);
+      return response.Error("Invalid role provided. Please provide a valid role (0, 1, 2, or 3).", []);
     }
 
+    // Default search condition (active users)
     let searchCondition = { status: { $in: [0, 1] } };
 
-
-    if (role) {
+    // Construct search conditions based on the role and user permissions
+    if (currentUser.role === 1) {
+      searchCondition.adminId = mongoose.Types.ObjectId(currentUser._id);
       searchCondition.role = role;
+    } else if (currentUser.role === 0) {
+      if (role) {
+        searchCondition.role = role;
+      }
+
+      if (adminId) {
+        searchCondition.adminId = mongoose.Types.ObjectId(adminId);
+      }
+
+      if (supervisorId) {
+        searchCondition.supervisorId = mongoose.Types.ObjectId(supervisorId);
+      }
+    } else {
+      searchCondition.adminId = mongoose.Types.ObjectId(currentUser.adminId);
+      searchCondition.role = role;
+      searchCondition.supervisorId = mongoose.Types.ObjectId(currentUser._id);
     }
 
-    if (adminId) {
-      searchCondition.adminId = mongoose.Types.ObjectId(adminId);
-    }
-
-    if (supervisorId) {
-      searchCondition.supervisorId = mongoose.Types.ObjectId(supervisorId);
-    }
-
+    // If there's a search query, update the search condition
     if (searchQuery) {
       searchCondition.$or = [
         { firstName: { $regex: searchQuery, $options: 'i' } },
@@ -716,16 +881,18 @@ const agentList = async (req, res) => {
       ];
     }
 
-    console.log(searchCondition, "searchQuery");
+    console.log("Search condition:", searchCondition);
+
+    // Aggregate query to retrieve users and their associated region, state, city
     let query = [
       { $match: searchCondition },
-      { 
-        $sort: { 
-          createdAt: -1, 
-          email: 1,       
-          mobile: 1,      
-          userName: 1 ,
-          status: 1
+      {
+        $sort: {
+          createdAt: -1,
+          email: 1,
+          mobile: 1,
+          userName: 1,
+          status: 1,
         }
       },
       {
@@ -737,10 +904,7 @@ const agentList = async (req, res) => {
         }
       },
       {
-        $unwind: {
-          path: '$region',
-          preserveNullAndEmptyArrays: true,
-        }
+        $unwind: { path: '$region', preserveNullAndEmptyArrays: true }
       },
       {
         $lookup: {
@@ -751,10 +915,7 @@ const agentList = async (req, res) => {
         }
       },
       {
-        $unwind: {
-          path: '$state',
-          preserveNullAndEmptyArrays: true,
-        }
+        $unwind: { path: '$state', preserveNullAndEmptyArrays: true }
       },
       {
         $lookup: {
@@ -765,10 +926,7 @@ const agentList = async (req, res) => {
         }
       },
       {
-        $unwind: {
-          path: '$city',
-          preserveNullAndEmptyArrays: true,
-        }
+        $unwind: { path: '$city', preserveNullAndEmptyArrays: true }
       },
       {
         $project: {
@@ -777,36 +935,28 @@ const agentList = async (req, res) => {
           email: 1,
           mobile: 1,
           designation: 1,
-          status: 1,  // Ensure the status field is included
-          region: {
-            name: "$region.name",
-            _id: "$region._id",
-          },
-          state: {
-            name: "$state.name",
-            _id: "$state._id",
-            code: "$state.stateCode"
-          },
-          city: {
-            name: "$city.name",
-            _id: "$city._id",
-            code: "$city.cityCode"
-          },
+          status: 1,
+          region: { name: "$region.name", _id: "$region._id" },
+          state: { name: "$state.name", _id: "$state._id", code: "$state.stateCode" },
+          city: { name: "$city.name", _id: "$city._id", code: "$city.cityCode" },
           userName: 1,
-          role: 1
+          role: 1,
         }
       }
     ];
 
+    // Pagination options
     const options = {
       page,
       limit,
       customLabels: { totalDocs: 'total', docs: 'agents' },
     };
 
+    // Aggregate and paginate results
     const myAggregate = User.aggregate(query);
     const getData = await User.aggregatePaginate(myAggregate, options);
 
+    // Handle no agents found scenario
     if (getData && getData.agents.length > 0) {
       const compressResponse = await utils.GZip(getData);
       response.Success(responseElement.AGENTFETCHED, compressResponse);
@@ -815,9 +965,20 @@ const agentList = async (req, res) => {
     }
 
   } catch (err) {
-    return response.Error(responseElement.INTERNAL_ERROR, err.message);
+    // Log detailed error information for internal debugging
+    console.error('Error during agent list fetch:', err);
+
+    // Provide a specific error message and consider user-friendly messaging
+    if (err.name === 'ValidationError') {
+      return response.Error('Validation error occurred. Please ensure that all required fields are properly filled.', err.message);
+    } else if (err.name === 'MongoError') {
+      return response.Error('Database error occurred while fetching agents. Please try again later.', err.message);
+    } else {
+      return response.Error('Internal server error. Please contact support if the issue persists.', err.message);
+    }
   }
 };
+
 
 
 
