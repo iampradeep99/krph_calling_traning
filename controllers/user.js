@@ -12,6 +12,7 @@ const Mailer = require('../middlewares/sendMail');
 const templates = require('../templates/accountTemplate')
 
 
+
 // const createAgent = async (req, res) => {
 //   try {
 //     const response = new ResponseHandler(res);
@@ -276,6 +277,7 @@ const addUpdateAdminOrTrainer = async (req, res) => {
   const mailer = new Mailer();
   const utils = new CommonMethods();
   try {
+    let getProfile = await Profile.findOne({profileId:1002})
     const { userId: addedBy } = req.user;
     const { _id,email, mobile } = req.body;
     let compressResponse;
@@ -312,7 +314,8 @@ const addUpdateAdminOrTrainer = async (req, res) => {
         ...req.body,
         password: hashedPassword,
         passwordPlain: newPassword,
-        userRefId: addedBy
+        userRefId: addedBy,
+        assignedProfile: getProfile._id
       });
      let addedUser =  await newUser.save();
      compressResponse = await utils.GZip([addedUser]);
@@ -343,6 +346,7 @@ const addUpdateSupervisor = async (req, res) => {
   try {
     const { userId: addedBy } = req.user; 
     const { _id, email, mobile,adminId } = req.body;
+    let getProfile = await Profile.findOne({profileId:1003})
     let compressResponse;
 
     console.log(req.body);
@@ -381,6 +385,7 @@ const addUpdateSupervisor = async (req, res) => {
         passwordPlain: newPassword,
         userRefId: addedBy,
         adminId,
+        assignedProfile: getProfile._id
       });
 
       let addedUser = await newUser.save();
@@ -825,10 +830,8 @@ const agentList = async (req, res) => {
   const response = new ResponseHandler(res);
   const utils = new CommonMethods();
   try {
-    // Fetch current user
     let currentUser = await User.findOne({ _id: req.user.userId });
 
-    // If user is not found, return a specific error message
     if (!currentUser) {
       return response.Error("User not found. Please ensure you are logged in with a valid user.", []);
     }
@@ -836,21 +839,17 @@ const agentList = async (req, res) => {
     const { page = 1, limit = 10, searchQuery = '', role, adminId, supervisorId } = req.body;
     console.log(req.body);
 
-    // Validate 'role' field
     if (!role) {
       return response.Error("Role is required. Please provide a valid role.", []);
     }
 
-    // Validate that the provided role is valid
     const validRoles = [0, 1, 2, 3];
     if (!validRoles.includes(parseInt(role))) {
       return response.Error("Invalid role provided. Please provide a valid role (0, 1, 2, or 3).", []);
     }
 
-    // Default search condition (active users)
     let searchCondition = { status: { $in: [0, 1] } };
 
-    // Construct search conditions based on the role and user permissions
     if (currentUser.role === 1) {
       searchCondition.adminId = mongoose.Types.ObjectId(currentUser._id);
       searchCondition.role = role;
@@ -872,7 +871,6 @@ const agentList = async (req, res) => {
       searchCondition.supervisorId = mongoose.Types.ObjectId(currentUser._id);
     }
 
-    // If there's a search query, update the search condition
     if (searchQuery) {
       searchCondition.$or = [
         { firstName: { $regex: searchQuery, $options: 'i' } },
@@ -883,7 +881,6 @@ const agentList = async (req, res) => {
 
     console.log("Search condition:", searchCondition);
 
-    // Aggregate query to retrieve users and their associated region, state, city
     let query = [
       { $match: searchCondition },
       {
@@ -945,18 +942,15 @@ const agentList = async (req, res) => {
       }
     ];
 
-    // Pagination options
     const options = {
       page,
       limit,
       customLabels: { totalDocs: 'total', docs: 'agents' },
     };
 
-    // Aggregate and paginate results
     const myAggregate = User.aggregate(query);
     const getData = await User.aggregatePaginate(myAggregate, options);
 
-    // Handle no agents found scenario
     if (getData && getData.agents.length > 0) {
       const compressResponse = await utils.GZip(getData);
       response.Success(responseElement.AGENTFETCHED, compressResponse);
@@ -965,10 +959,8 @@ const agentList = async (req, res) => {
     }
 
   } catch (err) {
-    // Log detailed error information for internal debugging
     console.error('Error during agent list fetch:', err);
 
-    // Provide a specific error message and consider user-friendly messaging
     if (err.name === 'ValidationError') {
       return response.Error('Validation error occurred. Please ensure that all required fields are properly filled.', err.message);
     } else if (err.name === 'MongoError') {
@@ -1420,6 +1412,13 @@ const statusUpdate = async (req, res) => {
     return response.Error(responseElement.SERVERERROR, []);
   }
 };
+
+
+
+
+
+
+
 
 
 
